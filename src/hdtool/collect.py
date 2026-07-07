@@ -29,7 +29,7 @@ class Attachment:
 
 
 def slug(text: str, maxlen: int = 60) -> str:
-    """Filesystem-safe, diacritic-free slug for supplier folder names."""
+    """Filesystem-safe, diacritic-free slug (company / sender-email folder names)."""
     t = (text or "").replace("đ", "d").replace("Đ", "D")
     t = unicodedata.normalize("NFKD", t)
     t = "".join(c for c in t if not unicodedata.combining(c))

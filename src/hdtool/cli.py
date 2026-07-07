@@ -241,25 +241,76 @@ def _is_old_period_dir(name: str) -> bool:
     return bool(re.fullmatch(r"\d{4}-\d{2}", name))
 
 
+def _invoice_keys(root, exclude=()) -> set:
+    """dedup_keys of every parseable XML under ``root`` (skipping ``exclude`` dirs)."""
+    excl = tuple(str(e) for e in exclude)
+    keys = set()
+    for p in Path(root).rglob("*.xml"):
+        if excl and str(p).startswith(excl):
+            continue
+        try:
+            keys.add(parse_invoice_xml(p.read_bytes()).dedup_key)
+        except InvoiceParseError:
+            pass
+    return keys
+
+
+def _dir_keys_subset(directory, new_keys: set) -> bool:
+    """True iff every parseable invoice under ``directory`` is present in ``new_keys``.
+
+    Used to decide it is SAFE to delete an old folder — only when nothing unique
+    would be lost.
+    """
+    for p in Path(directory).rglob("*.xml"):
+        try:
+            k = parse_invoice_xml(p.read_bytes()).dedup_key
+        except InvoiceParseError:
+            continue
+        if k not in new_keys:
+            return False
+    return True
+
+
 def cmd_reorganize(settings: Settings, args) -> int:
-    """Re-download invoices into data/<company>/<month>/<sender>/ and remove the
-    old period-based layout. Files are re-derivable from the mailbox, so this
-    rebuilds cleanly (grouping by sender email needs the mailbox)."""
+    """Re-download invoices into data/<company>/<month>/<sender>/, then remove the
+    old period layout ONLY where every invoice is confirmed present in the new
+    tree. The manifest is backed up (not destroyed) and restored if collect fails,
+    so a connect error or partial run never loses data (numbers come from XML)."""
     import shutil
     data = settings.data_dir
     manifest = data / ".collected.json"
+    backup = data / ".collected.json.bak"
+    old_dirs = ([c for c in data.iterdir() if c.is_dir() and _is_old_period_dir(c.name)]
+                if data.exists() else [])
+
     if manifest.exists():
-        manifest.unlink()   # force re-download into the new tree
+        manifest.replace(backup)   # set aside so re-collect writes into the new tree
     print("Sắp xếp lại: tải lại vào cấu trúc công ty/tháng/người gửi...")
-    rc = cmd_collect(settings, args)
-    removed = 0
-    if data.exists():
-        for child in data.iterdir():
-            if child.is_dir() and _is_old_period_dir(child.name):
-                shutil.rmtree(child)
-                removed += 1
-    if removed:
-        print(f"Đã dọn {removed} thư mục theo cấu trúc cũ.")
+    try:
+        rc = cmd_collect(settings, args)
+    except Exception as exc:  # e.g. IMAP connect/auth failure
+        if backup.exists():
+            backup.replace(manifest)   # restore — never lose dedup state
+        print(f"✗ Lỗi khi tải lại ({exc}). Đã KHÔI PHỤC manifest, KHÔNG xóa gì.")
+        return 1
+
+    new_keys = _invoice_keys(data, exclude=old_dirs)
+    removed = kept = 0
+    for d in old_dirs:
+        if _dir_keys_subset(d, new_keys):
+            shutil.rmtree(d)
+            removed += 1
+        else:
+            kept += 1
+            print(f"⚠ GIỮ '{d.name}' — còn hóa đơn chưa có bản trong cấu trúc mới "
+                  f"(không xóa để tránh mất dữ liệu).")
+    if backup.exists():
+        if manifest.exists():
+            backup.unlink()            # the freshly written manifest is authoritative
+        else:
+            backup.replace(manifest)   # collect wrote none -> keep the old state
+    msg = f"Đã dọn {removed} thư mục cũ"
+    print(msg + (f"; GIỮ LẠI {kept} thư mục để tránh mất dữ liệu." if kept else "."))
     return rc
 
 

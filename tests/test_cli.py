@@ -1,10 +1,16 @@
 """Tests for CLI argument parsing and date resolution."""
+import shutil
 from datetime import date
+from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
+from hdtool import cli
 from hdtool.cli import build_parser, resolve_period
 from hdtool.config import build_settings
+
+FIXTURES = Path(__file__).parent / "fixtures"
 
 
 def _settings(default_from=None, default_to=None):
@@ -44,6 +50,39 @@ def test_is_old_period_dir():
     assert _is_old_period_dir("unknown-period") is False
     assert _is_old_period_dir("miyano") is False
     assert _is_old_period_dir("_chua-ro-cong-ty") is False
+
+
+def test_dir_keys_subset_guards_data_loss(tmp_path):
+    import shutil
+    from hdtool.cli import _dir_keys_subset
+    from hdtool.parse_xml import parse_invoice_xml
+    fixtures = __import__("pathlib").Path(__file__).parent / "fixtures"
+    old = tmp_path / "2026-06"
+    old.mkdir()
+    shutil.copy(fixtures / "inv_10pct.xml", old / "a.xml")
+    key = parse_invoice_xml((fixtures / "inv_10pct.xml").read_bytes()).dedup_key
+    # every invoice in the old dir is present in the new structure -> safe to remove
+    assert _dir_keys_subset(old, {key}) is True
+    # its invoice is NOT in the new structure -> unsafe, must keep
+    assert _dir_keys_subset(old, set()) is False
+
+
+def test_reorganize_keeps_old_dir_when_not_recollected(tmp_path, monkeypatch):
+    # Reproduces the CRITICAL scenario: collect re-downloads nothing, so the old
+    # invoice must SURVIVE (never delete an old dir whose invoice isn't in the
+    # new tree), and the manifest must not be lost.
+    data = tmp_path / "data"
+    old = data / "2026-06" / "abc"
+    old.mkdir(parents=True)
+    shutil.copy(FIXTURES / "inv_10pct.xml", old / "a.xml")
+    (data / ".collected.json").write_text('{"m":{"xml":"x"}}')
+    settings = build_settings({"IMAP_USER": "x@y"}, {}, data_dir=data)
+    monkeypatch.setattr(cli, "cmd_collect", lambda s, a: 0)   # simulate 0 re-downloads
+    args = SimpleNamespace(from_date=date(2026, 6, 1), to_date=date(2026, 6, 30),
+                           include_suspect=False)
+    cli.cmd_reorganize(settings, args)
+    assert (old / "a.xml").exists()               # invoice NOT lost
+    assert (data / ".collected.json").exists()     # manifest preserved
 
 
 def test_parser_dates_optional_for_report():
