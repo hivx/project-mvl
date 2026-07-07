@@ -15,7 +15,7 @@ from .models import Invoice
 BANG_KE_HEADERS = [
     "Ngày HĐ", "Ký hiệu", "Số HĐ", "MST bán", "Tên bán",
     "Tiền chưa thuế", "Thuế suất", "Tiền thuế", "Tổng tiền",
-    "Loại", "Trạng thái", "Link XML", "Link PDF", "Nguồn",
+    "Loại", "Công ty", "Trạng thái", "Link XML", "Link PDF", "Nguồn",
 ]
 
 SUMMARY_HEADERS = ["Thuế suất", "Tiền chưa thuế", "Tiền thuế"]
@@ -86,6 +86,7 @@ def _write_bang_ke(wb, result: AggregateResult):
             _num(inv.tien_thue),
             _num(inv.tong_thanh_toan),
             inv.loai,
+            inv.cong_ty,
             inv.trang_thai,
             inv.xml_path or "",
             inv.pdf_path or "",

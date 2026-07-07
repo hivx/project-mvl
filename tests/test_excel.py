@@ -12,14 +12,14 @@ MIYANO = "0301234567"
 
 
 def make_inv(so_hd, ky_hieu="C22TAA", tax_lines=None, chua="1000000",
-             thue="100000", tong="1100000"):
+             thue="100000", tong="1100000", cong_ty=""):
     if tax_lines is None:
         tax_lines = [TaxLine("10%", Decimal(chua), Decimal(thue))]
     return Invoice(
         so_hd=so_hd, ky_hieu_mau_so="1", ky_hieu=ky_hieu, ngay_lap=date(2026, 6, 15),
         mst_ban="0312345678", ten_ban="CÔNG TY ABC", mst_mua=MIYANO, ten_mua="MIYANO",
         don_vi_tien="VND", tien_chua_thue=Decimal(chua), tien_thue=Decimal(thue),
-        tong_thanh_toan=Decimal(tong), tax_lines=tax_lines,
+        tong_thanh_toan=Decimal(tong), tax_lines=tax_lines, cong_ty=cong_ty,
     )
 
 
@@ -44,6 +44,17 @@ def test_bang_ke_header_and_row(tmp_path):
     assert row2["MST bán"] == "0312345678"
     assert Decimal(str(row2["Tổng tiền"])) == Decimal("1100000")
     assert row2["Loại"] == "mua_vao"
+
+
+def test_bang_ke_has_company_column(tmp_path):
+    res = aggregate([make_inv("123")], companies={MIYANO: "miyano"})
+    out = tmp_path / "report.xlsx"
+    write_workbook(res, out)
+    ws = openpyxl.load_workbook(out)["Bảng kê"]
+    header = [c.value for c in ws[1]]
+    assert "Công ty" in header
+    row2 = {header[i]: c.value for i, c in enumerate(ws[2])}
+    assert row2["Công ty"] == "miyano"
 
 
 def test_totals_row_present(tmp_path):

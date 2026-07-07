@@ -2,13 +2,14 @@
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from datetime import date
 from pathlib import Path
 from typing import Optional
 
 from .adapters import try_fetch_links
-from .collect import extract_links, invoice_files, save_invoice_files
+from .collect import extract_links, invoice_dir, invoice_files, save_invoice_files
 from .config import Settings, load_settings
 from .manifest import filter_uncollected, load_manifest, mark_collected, save_manifest
 from .parse_xml import InvoiceParseError, parse_invoice_xml
@@ -75,6 +76,11 @@ def build_parser() -> argparse.ArgumentParser:
     add_period(sp_run)
     sp_run.add_argument("--include-suspect", action="store_true")
     sp_run.add_argument("-o", "--output", default=None)
+
+    sp_reorg = sub.add_parser(
+        "reorganize", help="Tải lại & sắp xếp hóa đơn theo cấu trúc công ty/tháng/người gửi")
+    add_period(sp_reorg)
+    sp_reorg.add_argument("--include-suspect", action="store_true")
 
     return p
 
@@ -155,8 +161,9 @@ def cmd_collect(settings: Settings, args) -> int:
                             need_manual.append((c, links))
                             continue
                         files = portal_files
-                    supplier, ngay = _peek_supplier_date(files, c)
-                    saved = save_invoice_files(files, settings.data_dir, ngay, supplier)
+                    company, ngay = _peek_company_date(files, c, settings)
+                    dest = invoice_dir(settings.data_dir, company, ngay, _extract_email(c.sender))
+                    saved = save_invoice_files(files, dest)
                     mark_collected(manifest, c.message_id, saved)
                     saved_count += 1
                     where = saved.get("xml") or saved.get("pdf") or saved.get("zip")
@@ -179,16 +186,28 @@ def cmd_collect(settings: Settings, args) -> int:
     return 0
 
 
-def _peek_supplier_date(files, candidate):
-    """Best-effort supplier name + invoice date from the XML for foldering."""
+def _extract_email(s: str) -> str:
+    m = re.search(r"[\w.\-+]+@[\w.\-]+", s or "")
+    return m.group(0).lower() if m else ""
+
+
+def _peek_company_date(files, candidate, settings):
+    """From the invoice XML: (company folder name, invoice date).
+
+    company = settings.companies[buyer MST] for our companies, "_khac" for a
+    known-but-not-ours buyer, "_chua-ro-cong-ty" when there is no readable XML.
+    """
     for f in files:
         if f.kind == "xml":
             try:
                 inv = parse_invoice_xml(f.data)
-                return (inv.ten_ban or "khong-ro", inv.ngay_lap)
             except InvoiceParseError:
-                pass
-    return (candidate.sender.split("@")[-1] if candidate.sender else "khong-ro", candidate.internal_date)
+                continue
+            company = settings.companies.get(inv.mst_mua)
+            if company is None:
+                company = "_khac" if inv.mst_mua else "_chua-ro-cong-ty"
+            return company, (inv.ngay_lap or candidate.internal_date)
+    return "_chua-ro-cong-ty", candidate.internal_date
 
 
 def cmd_report(settings: Settings, args) -> int:
@@ -198,7 +217,8 @@ def cmd_report(settings: Settings, args) -> int:
         print(f"Không tìm thấy thư mục nguồn: {source}. Hãy chạy 'collect' trước.")
         return 1
     result, skipped, manual = build_report(source, args.from_date, args.to_date,
-                                            settings.buyer_msts, out)
+                                            settings.buyer_msts, out,
+                                            companies=settings.companies)
     def _money(x):
         return int(x) if x == x.to_integral_value() else x
 
@@ -216,6 +236,33 @@ def cmd_report(settings: Settings, args) -> int:
     return 0
 
 
+def _is_old_period_dir(name: str) -> bool:
+    """True for old-layout top-level folders named YYYY-MM (to be cleaned up)."""
+    return bool(re.fullmatch(r"\d{4}-\d{2}", name))
+
+
+def cmd_reorganize(settings: Settings, args) -> int:
+    """Re-download invoices into data/<company>/<month>/<sender>/ and remove the
+    old period-based layout. Files are re-derivable from the mailbox, so this
+    rebuilds cleanly (grouping by sender email needs the mailbox)."""
+    import shutil
+    data = settings.data_dir
+    manifest = data / ".collected.json"
+    if manifest.exists():
+        manifest.unlink()   # force re-download into the new tree
+    print("Sắp xếp lại: tải lại vào cấu trúc công ty/tháng/người gửi...")
+    rc = cmd_collect(settings, args)
+    removed = 0
+    if data.exists():
+        for child in data.iterdir():
+            if child.is_dir() and _is_old_period_dir(child.name):
+                shutil.rmtree(child)
+                removed += 1
+    if removed:
+        print(f"Đã dọn {removed} thư mục theo cấu trúc cũ.")
+    return rc
+
+
 def cmd_run(settings: Settings, args) -> int:
     rc = cmd_collect(settings, args)
     if rc != 0:
@@ -227,7 +274,8 @@ def cmd_run(settings: Settings, args) -> int:
     return cmd_report(settings, report_args)
 
 
-_COMMANDS = {"scan": cmd_scan, "collect": cmd_collect, "report": cmd_report, "run": cmd_run}
+_COMMANDS = {"scan": cmd_scan, "collect": cmd_collect, "report": cmd_report,
+             "run": cmd_run, "reorganize": cmd_reorganize}
 
 
 def main(argv: Optional[list] = None) -> int:

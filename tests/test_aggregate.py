@@ -64,6 +64,18 @@ def test_buyer_filter_excludes_other_buyer():
     assert any(inv.so_hd == "77" for inv, _ in res.excluded)
 
 
+def test_aggregate_labels_company_and_keeps_both_companies():
+    a = make_inv("1", mst_mua="0109529507")
+    b = make_inv("2", ky_hieu="C22TBB", mst_mua="0108186705")
+    other = make_inv("3", ky_hieu="C22TCC", mst_mua="0400000000")  # not one of ours
+    res = aggregate([a, b, other],
+                    companies={"0109529507": "miyano", "0108186705": "medcons"})
+    kept = {inv.so_hd: inv.cong_ty for inv in res.invoices}
+    assert kept == {"1": "miyano", "2": "medcons"}
+    assert all(inv.loai == "mua_vao" for inv in res.invoices)
+    assert any(inv.so_hd == "3" for inv, _ in res.excluded)
+
+
 def test_buyer_filter_disabled_keeps_all():
     mine = make_inv("123", mst_mua=MIYANO)
     other = make_inv("77", mst_mua="0400000000", ky_hieu="C22TBB")

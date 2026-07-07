@@ -78,7 +78,8 @@ def find_manual_entry_pdfs(data_dir, invoices: list[Invoice]) -> list[str]:
 
 
 def build_report(
-    data_dir, from_date: date, to_date: date, buyer_msts: set[str], out_path
+    data_dir, from_date: date, to_date: date, buyer_msts: set[str], out_path,
+    companies: Optional[dict] = None,
 ) -> tuple[AggregateResult, list[tuple[str, str, str]], list[str]]:
     """Full report stage.
 
@@ -112,7 +113,7 @@ def build_report(
             skipped.append((inv.xml_path or inv.so_hd, "ngoai_ky",
                             f"Ngày lập {inv.ngay_lap} ngoài kỳ"))
 
-    result = aggregate(in_period, buyer_msts=buyer_msts)
+    result = aggregate(in_period, buyer_msts=buyer_msts, companies=companies)
     for inv, reason in result.excluded:
         skipped.append((inv.xml_path or inv.so_hd, "sai_ben_mua", reason))
 

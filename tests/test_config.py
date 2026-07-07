@@ -68,6 +68,21 @@ def test_build_settings_multiple_accounts():
     assert all(a.host == "imap.gmail.com" and a.port == 993 for a in s.accounts)
 
 
+def test_build_settings_parses_companies_map():
+    s = build_settings({"IMAP_USER": "a@x"},
+                       {"companies": {"0109529507": "miyano", "0108186705": "medcons"}})
+    assert s.companies == {"0109529507": "miyano", "0108186705": "medcons"}
+    # buyer filter keeps ALL our companies
+    assert s.buyer_msts == {"0109529507", "0108186705"}
+
+
+def test_companies_falls_back_to_miyano_mst_env():
+    s = build_settings({"IMAP_USER": "a@x", "MIYANO_MST": "0109529507"}, {})
+    assert "0109529507" in s.buyer_msts
+    # legacy single MST gets a default company name
+    assert s.companies.get("0109529507")
+
+
 def test_build_settings_reads_default_period():
     s = build_settings({"IMAP_USER": "a@x.vn", "IMAP_APP_PASSWORD": "p"},
                        {"default_from": "2026-06-01", "default_to": "2026-06-30"})

@@ -36,6 +36,7 @@ class Invoice:
     hd_bi_thay_the: Optional[str] = None
     # loai: mua_vao | ban_ra | khong_ro
     loai: str = "khong_ro"
+    cong_ty: str = ""          # tên công ty bên mua (miyano/medcons) nếu là mua-vào
     xml_path: Optional[str] = None
     pdf_path: Optional[str] = None
     source_message_id: Optional[str] = None

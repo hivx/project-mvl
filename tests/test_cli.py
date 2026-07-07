@@ -33,9 +33,17 @@ def test_parser_scan():
 
 
 def test_parser_run_and_collect_exist():
-    for cmd in ("collect", "run"):
+    for cmd in ("collect", "run", "reorganize"):
         args = build_parser().parse_args([cmd, "--from", "2026-06-01", "--to", "2026-06-30"])
         assert args.command == cmd
+
+
+def test_is_old_period_dir():
+    from hdtool.cli import _is_old_period_dir
+    assert _is_old_period_dir("2026-06") is True
+    assert _is_old_period_dir("unknown-period") is False
+    assert _is_old_period_dir("miyano") is False
+    assert _is_old_period_dir("_chua-ro-cong-ty") is False
 
 
 def test_parser_dates_optional_for_report():

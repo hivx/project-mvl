@@ -136,11 +136,21 @@ def period_dir(base, ngay_lap: Optional[date]) -> Path:
     return Path(base) / period
 
 
-def save_invoice_files(
-    files: list[Attachment], base_dir, ngay_lap: Optional[date], supplier_name: str
-) -> dict:
-    """Write invoice files to base/<period>/<supplier-slug>/ and return paths."""
-    dest = period_dir(base_dir, ngay_lap) / slug(supplier_name)
+def invoice_dir(base_dir, company: str, ngay_lap: Optional[date], sender_email: str) -> Path:
+    """Tree: base/<công ty>/<YYYY-MM>/<email người gửi>/.
+
+    Company folder groups by the buyer (miyano/medcons); the month groups by
+    invoice date; the innermost groups by sender email (same sender -> shared).
+    """
+    comp = company.strip() if (company and company.strip()) else "_chua-ro-cong-ty"
+    period = ngay_lap.strftime("%Y-%m") if ngay_lap else "unknown-period"
+    sender = slug(sender_email) if (sender_email and sender_email.strip()) else "khong-ro-nguoi-gui"
+    return Path(base_dir) / comp / period / sender
+
+
+def save_invoice_files(files: list[Attachment], dest_dir) -> dict:
+    """Write invoice files into ``dest_dir`` and return {kind: path}."""
+    dest = Path(dest_dir)
     dest.mkdir(parents=True, exist_ok=True)
     saved: dict = {}
     for a in files:

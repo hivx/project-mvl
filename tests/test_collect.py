@@ -7,7 +7,7 @@ from pathlib import Path
 
 from hdtool.collect import (
     slug, iter_attachments, invoice_files, extract_links,
-    period_dir, save_invoice_files, has_kind,
+    period_dir, save_invoice_files, has_kind, invoice_dir,
 )
 
 
@@ -83,14 +83,31 @@ def test_period_dir_unknown_when_no_date(tmp_path):
     assert "unknown" in d.name
 
 
-def test_save_invoice_files_writes_tree(tmp_path):
+def test_invoice_dir_company_month_sender(tmp_path):
+    d = invoice_dir(tmp_path, "miyano", date(2026, 6, 15), "no-reply@xanhsm.com")
+    parts = d.relative_to(tmp_path).parts
+    assert parts[0] == "miyano"
+    assert parts[1] == "2026-06"
+    assert "xanhsm" in parts[2]
+
+
+def test_invoice_dir_fallbacks(tmp_path):
+    d = invoice_dir(tmp_path, "", None, "")
+    parts = d.relative_to(tmp_path).parts
+    assert parts[0] == "_chua-ro-cong-ty"
+    assert "unknown" in parts[1]
+    assert parts[2] == "khong-ro-nguoi-gui"
+
+
+def test_save_invoice_files_writes_to_dest(tmp_path):
     m = make_email(attachments=[
         ("hd.xml", "xml", b"<HDon></HDon>"),
         ("hd.pdf", "pdf", b"%PDF fake"),
     ])
     files = invoice_files(m)
-    saved = save_invoice_files(files, tmp_path, date(2026, 6, 15), "CÔNG TY ABC")
+    dest = invoice_dir(tmp_path, "miyano", date(2026, 6, 15), "no-reply@xanhsm.com")
+    saved = save_invoice_files(files, dest)
     assert saved["xml"].exists()
     assert saved["pdf"].exists()
-    assert "2026-06" in str(saved["xml"])
-    assert "cong-ty-abc" in str(saved["xml"])
+    s = str(saved["xml"])
+    assert "miyano" in s and "2026-06" in s and "xanhsm" in s

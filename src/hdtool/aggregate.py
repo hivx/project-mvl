@@ -47,11 +47,15 @@ def normalize_rate(s: Optional[str]) -> str:
     return f"{val.normalize()}%"
 
 
-def aggregate(invoices: list[Invoice], buyer_msts: Optional[set[str]] = None) -> AggregateResult:
+def aggregate(invoices: list[Invoice], buyer_msts: Optional[set[str]] = None,
+              companies: Optional[dict] = None) -> AggregateResult:
+    companies = companies or {}
+    if not buyer_msts and companies:
+        buyer_msts = set(companies)
     buyer_msts = buyer_msts or set()
 
     kept = _dedup_latest(invoices)
-    filtered, excluded = _apply_buyer_filter(kept, buyer_msts)
+    filtered, excluded = _apply_buyer_filter(kept, buyer_msts, companies)
     _mark_replacements(filtered)
 
     active = [inv for inv in filtered if inv.trang_thai != "nghi_huy"]
@@ -77,7 +81,8 @@ def _dedup_latest(invoices: list[Invoice]) -> list[Invoice]:
     return list(dedup.values())
 
 
-def _apply_buyer_filter(kept, buyer_msts):
+def _apply_buyer_filter(kept, buyer_msts, companies=None):
+    companies = companies or {}
     filtered: list[Invoice] = []
     excluded: list[tuple[Invoice, str]] = []
     for inv in kept:
@@ -86,6 +91,7 @@ def _apply_buyer_filter(kept, buyer_msts):
             filtered.append(inv)
         elif inv.mst_mua in buyer_msts:
             inv.loai = "mua_vao"
+            inv.cong_ty = companies.get(inv.mst_mua, "")
             filtered.append(inv)
         else:
             inv.loai = "ban_ra" if inv.mst_ban in buyer_msts else "khong_ro"

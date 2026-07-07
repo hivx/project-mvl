@@ -1,5 +1,11 @@
 # Cấu hình nhận diện & quét hóa đơn. Sửa file này để mở rộng, không cần đụng code.
 
+# Các công ty NHẬN hóa đơn (bên mua): MST -> tên folder. Hóa đơn tới 1 trong các
+# MST này = mua-vào (gắn nhãn công ty); MST khác = CC nhầm. Thêm pháp nhân ở đây.
+companies:
+  "0109529507": miyano
+  "0108186705": medcons
+
 # Kỳ mặc định (NGÀY LẬP hóa đơn). Chạy `hdtool run` / `python run.py` không kèm
 # ngày sẽ dùng khoảng này. Truyền --from/--to trên dòng lệnh sẽ ghi đè.
 # Để trống nếu muốn bắt buộc nhập ngày mỗi lần.

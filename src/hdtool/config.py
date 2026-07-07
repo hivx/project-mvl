@@ -28,6 +28,7 @@ class Settings:
     imap_password: str
     accounts: list[Account]
     buyer_msts: set[str]
+    companies: dict[str, str]          # MST bên mua -> tên công ty (folder)
     classifier: ClassifierConfig
     pad_before_days: int
     pad_after_days: int
@@ -66,7 +67,18 @@ def _parse_accounts(env: dict) -> list[Account]:
     return accounts
 
 
+def _build_companies(env: dict, cfg: dict) -> dict[str, str]:
+    """Map buyer MST -> company folder name. Falls back to MIYANO_MST env."""
+    companies = {str(k).strip(): str(v).strip()
+                 for k, v in (cfg.get("companies") or {}).items() if str(k).strip()}
+    if not companies:
+        for mst in parse_msts(env.get("MIYANO_MST")):
+            companies[mst] = "cong-ty"
+    return companies
+
+
 def build_settings(env: dict, cfg: dict, data_dir: Optional[Path] = None) -> Settings:
+    companies_map = _build_companies(env, cfg)
     classifier = ClassifierConfig(
         issuer_domains=list(cfg.get("issuer_domains", [])),
         keywords=list(cfg.get("keywords", [])),
@@ -80,7 +92,8 @@ def build_settings(env: dict, cfg: dict, data_dir: Optional[Path] = None) -> Set
         imap_user=env.get("IMAP_USER", ""),
         imap_password=env.get("IMAP_APP_PASSWORD", ""),
         accounts=_parse_accounts(env),
-        buyer_msts=parse_msts(env.get("MIYANO_MST")),
+        buyer_msts=set(companies_map),
+        companies=companies_map,
         classifier=classifier,
         pad_before_days=int(cfg.get("pad_before_days", 15)),
         pad_after_days=int(cfg.get("pad_after_days", 45)),
