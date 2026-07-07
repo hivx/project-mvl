@@ -11,6 +11,7 @@ from .collect import extract_links, has_kind, invoice_files, save_invoice_files
 from .config import Settings, load_settings
 from .parse_xml import InvoiceParseError, parse_invoice_xml
 from .pipeline import build_report
+from .reports import write_candidates_csv
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
@@ -88,6 +89,10 @@ def cmd_scan(settings: Settings, args) -> int:
         print(f"  [{c.score}] {c.sender[:40]:40s} | {c.subject[:60]}  -> {', '.join(c.reasons)}")
     if not certain and not suspect:
         print("Không tìm thấy email hóa đơn nào trong cửa sổ thời gian này.")
+
+    out_csv = settings.data_dir / f"ung-vien-{args.from_date}_{args.to_date}.csv"
+    write_candidates_csv(cands, out_csv)
+    print(f"\nĐã ghi danh sách ứng viên/nghi ngờ để rà soát: {out_csv}")
     return 0
 
 
