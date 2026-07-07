@@ -1,6 +1,9 @@
 # Secrets — never commit
 .env
 
+# Local Claude Code plugin/session state
+.claude/
+
 # Downloaded invoices & generated reports
 data/
 *.xlsx
