@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<HDon>
+  <DLHDon Id="data">
+    <TTChung>
+      <KHMSHDon>1</KHMSHDon>
+      <KHHDon>C22TAA</KHHDon>
+      <SHDon>200</SHDon>
+      <NLap>2026-07-02</NLap>
+      <DVTTe>VND</DVTTe>
+      <TTHDLQuan>
+        <TCHDon>1</TCHDon>
+        <KHMSHDCLQuan>1</KHMSHDCLQuan>
+        <KHHDCLQuan>C22TAA</KHHDCLQuan>
+        <SHDCLQuan>123</SHDCLQuan>
+        <NLHDCLQuan>2026-06-15</NLHDCLQuan>
+        <GChu>Thay thế hóa đơn số 123 do sai thông tin</GChu>
+      </TTHDLQuan>
+    </TTChung>
+    <NDHDon>
+      <NBan>
+        <Ten>CÔNG TY TNHH THIẾT BỊ ABC</Ten>
+        <MST>0312345678</MST>
+      </NBan>
+      <NMua>
+        <Ten>CÔNG TY TNHH MIYANO VIỆT NAM</Ten>
+        <MST>0301234567</MST>
+      </NMua>
+      <TToan>
+        <THTTLTSuat>
+          <LTSuat>
+            <TSuat>10%</TSuat>
+            <ThTien>1200000</ThTien>
+            <TThue>120000</TThue>
+          </LTSuat>
+        </THTTLTSuat>
+        <TgTCThue>1200000</TgTCThue>
+        <TgTThue>120000</TgTThue>
+        <TgTTTBSo>1320000</TgTTTBSo>
+      </TToan>
+    </NDHDon>
+  </DLHDon>
+</HDon>

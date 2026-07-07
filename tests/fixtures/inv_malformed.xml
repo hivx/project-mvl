@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<HDon>
+  <DLHDon>
+    <TTChung>
+      <SHDon>999</SHDon>
+      <NLap>2026-06-15</NLap>
+    </TTChung>
+  <!-- broken: unclosed tags below -->
+    <NDHDon>
+      <NBan><Ten>Broken

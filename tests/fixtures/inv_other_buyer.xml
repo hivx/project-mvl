@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<HDon>
+  <DLHDon Id="data">
+    <TTChung>
+      <KHMSHDon>1</KHMSHDon>
+      <KHHDon>C22TBB</KHHDon>
+      <SHDon>77</SHDon>
+      <NLap>2026-06-20</NLap>
+      <DVTTe>VND</DVTTe>
+    </TTChung>
+    <NDHDon>
+      <NBan>
+        <Ten>CÔNG TY TNHH THIẾT BỊ ABC</Ten>
+        <MST>0312345678</MST>
+      </NBan>
+      <NMua>
+        <Ten>CÔNG TY KHÁC KHÔNG PHẢI MIYANO</Ten>
+        <MST>0400000000</MST>
+      </NMua>
+      <TToan>
+        <THTTLTSuat>
+          <LTSuat>
+            <TSuat>8%</TSuat>
+            <ThTien>500000</ThTien>
+            <TThue>40000</TThue>
+          </LTSuat>
+        </THTTLTSuat>
+        <TgTCThue>500000</TgTCThue>
+        <TgTThue>40000</TgTThue>
+        <TgTTTBSo>540000</TgTTTBSo>
+      </TToan>
+    </NDHDon>
+  </DLHDon>
+</HDon>

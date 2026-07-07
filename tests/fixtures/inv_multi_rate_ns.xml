@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<inv:HDon xmlns:inv="http://kekhaithue.gdt.gov.vn/TDiep">
+  <inv:DLHDon Id="data">
+    <inv:TTChung>
+      <inv:KHMSHDon>1</inv:KHMSHDon>
+      <inv:KHHDon>K24TXX</inv:KHHDon>
+      <inv:SHDon>9</inv:SHDon>
+      <inv:NLap>2026-06-30</inv:NLap>
+      <inv:DVTTe>VND</inv:DVTTe>
+    </inv:TTChung>
+    <inv:NDHDon>
+      <inv:NBan>
+        <inv:Ten>CÔNG TY CỔ PHẦN DỊCH VỤ XYZ</inv:Ten>
+        <inv:MST>0399999999</inv:MST>
+      </inv:NBan>
+      <inv:NMua>
+        <inv:Ten>CÔNG TY TNHH MIYANO VIỆT NAM</inv:Ten>
+        <inv:MST>0301234567</inv:MST>
+      </inv:NMua>
+      <inv:TToan>
+        <inv:THTTLTSuat>
+          <inv:LTSuat>
+            <inv:TSuat>10%</inv:TSuat>
+            <inv:ThTien>2000000</inv:ThTien>
+            <inv:TThue>200000</inv:TThue>
+          </inv:LTSuat>
+          <inv:LTSuat>
+            <inv:TSuat>5%</inv:TSuat>
+            <inv:ThTien>1000000</inv:ThTien>
+            <inv:TThue>50000</inv:TThue>
+          </inv:LTSuat>
+          <inv:LTSuat>
+            <inv:TSuat>KCT</inv:TSuat>
+            <inv:ThTien>500000</inv:ThTien>
+            <inv:TThue>0</inv:TThue>
+          </inv:LTSuat>
+        </inv:THTTLTSuat>
+        <inv:TgTCThue>3500000</inv:TgTCThue>
+        <inv:TgTThue>250000</inv:TgTThue>
+        <inv:TgTTTBSo>3750000</inv:TgTTTBSo>
+      </inv:TToan>
+    </inv:NDHDon>
+  </inv:DLHDon>
+</inv:HDon>

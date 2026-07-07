@@ -1,0 +1,43 @@
+# Cấu hình nhận diện & quét hóa đơn. Sửa file này để mở rộng, không cần đụng code.
+
+# Cửa sổ ngày quét email = [from - pad_before, to + pad_after], rồi lọc lại theo
+# ngày lập (NLap) trong XML. Nới rộng để bắt hóa đơn tháng trước gửi đầu tháng sau.
+pad_before_days: 15
+pad_after_days: 45
+
+# Ngưỡng chấm điểm email
+certain_threshold: 5
+suspect_threshold: 2
+
+# Domain/nhà phát hành hóa đơn điện tử VN (khớp theo chuỗi con trong địa chỉ gửi)
+issuer_domains:
+  - sinvoice
+  - vnpt
+  - meinvoice
+  - misa
+  - easyinvoice
+  - viettel
+  - mobifone
+  - bkav
+  - softdreams
+  - wininvoice
+  - minvoice
+  - hilo
+  - fpt
+  - hoadon
+  - einvoice
+
+# Từ khóa tiêu đề (khớp không phân biệt hoa thường)
+keywords:
+  - "hóa đơn"
+  - "hoá đơn"
+  - "hoa don"
+  - "invoice"
+  - "hđđt"
+  - "hddt"
+  - "e-invoice"
+  - "einvoice"
+  - "biên lai"
+
+# Người gửi đã biết chắc là hóa đơn -> luôn nhận (điền dần khi xác nhận thực tế)
+whitelist_senders: []
