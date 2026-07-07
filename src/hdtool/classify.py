@@ -40,6 +40,7 @@ def score_email(
     uid: str = "",
     message_id: str = "",
     internal_date: Optional[date] = None,
+    account: str = "",
 ) -> EmailCandidate:
     sender_l = (sender or "").lower()
     subject_l = (subject or "").lower()
@@ -90,4 +91,5 @@ def score_email(
         has_pdf=has_pdf,
         has_link=has_link,
         bucket=bucket,
+        account=account,
     )

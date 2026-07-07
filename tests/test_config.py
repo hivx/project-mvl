@@ -45,6 +45,29 @@ def test_build_settings_from_env_and_cfg():
     assert s.classifier.whitelist_senders == ["ketoan@x.vn"]
 
 
+def test_build_settings_single_account_backward_compat():
+    env = {"IMAP_USER": "a@x.vn", "IMAP_APP_PASSWORD": "pw a"}
+    s = build_settings(env, {})
+    assert len(s.accounts) == 1
+    assert s.accounts[0].user == "a@x.vn"
+    assert s.accounts[0].password == "pw a"
+    # legacy fields still populated (first account)
+    assert s.imap_user == "a@x.vn"
+
+
+def test_build_settings_multiple_accounts():
+    env = {
+        "IMAP_HOST": "imap.gmail.com", "IMAP_PORT": "993",
+        "IMAP_USER": "a@x.vn", "IMAP_APP_PASSWORD": "pw a a a",
+        "IMAP_USER_2": "b@y.vn", "IMAP_APP_PASSWORD_2": "pw b b b",
+        "IMAP_USER_3": "c@z.vn", "IMAP_APP_PASSWORD_3": "pw c",
+    }
+    s = build_settings(env, {})
+    assert [a.user for a in s.accounts] == ["a@x.vn", "b@y.vn", "c@z.vn"]
+    assert s.accounts[1].password == "pw b b b"   # app passwords keep spaces
+    assert all(a.host == "imap.gmail.com" and a.port == 993 for a in s.accounts)
+
+
 def test_load_settings_reads_repo_defaults():
     root = Path(__file__).resolve().parent.parent
     s = load_settings(root, env={"IMAP_USER": "x@y.vn", "IMAP_APP_PASSWORD": "p"})

@@ -51,3 +51,9 @@ def test_reasons_recorded():
                     has_pdf=False, has_link=False, cfg=CFG)
     assert c.has_xml is True
     assert len(c.reasons) >= 2  # xml + issuer + keyword
+
+
+def test_records_source_account():
+    c = score_email("hoadon@misa.com.vn", "Hóa đơn", has_xml=True, has_pdf=False,
+                    has_link=False, cfg=CFG, account="info@miyano.com.vn")
+    assert c.account == "info@miyano.com.vn"

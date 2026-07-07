@@ -47,3 +47,12 @@ def test_bool_flags_rendered(tmp_path):
                                       tmp_path / "c.csv"))
     assert rows[1][5] == "x"   # XML column
     assert rows[1][6] == ""    # PDF column
+
+
+def test_source_account_column(tmp_path):
+    c = _cand()
+    c.account = "info@miyano.com.vn"
+    rows = _read(write_candidates_csv([c], tmp_path / "c.csv"))
+    assert "Hộp thư" in rows[0]
+    idx = rows[0].index("Hộp thư")
+    assert rows[1][idx] == "info@miyano.com.vn"

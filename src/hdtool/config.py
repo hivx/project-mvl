@@ -12,11 +12,21 @@ from .classify import ClassifierConfig
 
 
 @dataclass
+class Account:
+    """One IMAP mailbox to scan."""
+    host: str
+    port: int
+    user: str
+    password: str
+
+
+@dataclass
 class Settings:
     imap_host: str
     imap_port: int
     imap_user: str
     imap_password: str
+    accounts: list[Account]
     buyer_msts: set[str]
     classifier: ClassifierConfig
     pad_before_days: int
@@ -29,6 +39,29 @@ def parse_msts(raw: Optional[str]) -> set[str]:
     if not raw:
         return set()
     return {part.strip() for part in raw.split(",") if part.strip()}
+
+
+def _parse_accounts(env: dict) -> list[Account]:
+    """Account 1 from IMAP_USER/IMAP_APP_PASSWORD, then IMAP_USER_2, _3, ...
+
+    host/port default to the base IMAP_HOST/IMAP_PORT unless overridden per account.
+    """
+    base_host = env.get("IMAP_HOST", "imap.gmail.com")
+    base_port = int(env.get("IMAP_PORT", "993"))
+    accounts: list[Account] = []
+    if env.get("IMAP_USER"):
+        accounts.append(Account(base_host, base_port,
+                                env.get("IMAP_USER", ""), env.get("IMAP_APP_PASSWORD", "")))
+    n = 2
+    while env.get(f"IMAP_USER_{n}"):
+        accounts.append(Account(
+            env.get(f"IMAP_HOST_{n}", base_host),
+            int(env.get(f"IMAP_PORT_{n}", base_port)),
+            env.get(f"IMAP_USER_{n}", ""),
+            env.get(f"IMAP_APP_PASSWORD_{n}", ""),
+        ))
+        n += 1
+    return accounts
 
 
 def build_settings(env: dict, cfg: dict, data_dir: Optional[Path] = None) -> Settings:
@@ -44,6 +77,7 @@ def build_settings(env: dict, cfg: dict, data_dir: Optional[Path] = None) -> Set
         imap_port=int(env.get("IMAP_PORT", "993")),
         imap_user=env.get("IMAP_USER", ""),
         imap_password=env.get("IMAP_APP_PASSWORD", ""),
+        accounts=_parse_accounts(env),
         buyer_msts=parse_msts(env.get("MIYANO_MST")),
         classifier=classifier,
         pad_before_days=int(cfg.get("pad_before_days", 15)),

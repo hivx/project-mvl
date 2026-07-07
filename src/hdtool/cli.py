@@ -74,21 +74,28 @@ def _default_output(from_date: date, to_date: date, settings: Settings) -> Path:
 
 def cmd_scan(settings: Settings, args) -> int:
     from .mailscan import MailScanner
-    scanner = MailScanner(settings)
-    scanner.connect()
-    print(f"Đã kết nối, quét thư mục: {scanner.folder}")
-    try:
-        cands = scanner.scan(args.from_date, args.to_date)
-    finally:
-        scanner.close()
+    cands = []
+    for account in settings.accounts:
+        scanner = MailScanner(settings, account)
+        scanner.connect()
+        print(f"[{account.user}] đã kết nối, quét thư mục: {scanner.folder}")
+        try:
+            acc_cands = scanner.scan(args.from_date, args.to_date)
+        finally:
+            scanner.close()
+        cands.extend(acc_cands)
+        cer = sum(1 for c in acc_cands if c.bucket == "certain")
+        sus = sum(1 for c in acc_cands if c.bucket == "suspect")
+        print(f"  -> chắc chắn: {cer}, nghi ngờ: {sus}")
+
     certain = [c for c in cands if c.bucket == "certain"]
     suspect = [c for c in cands if c.bucket == "suspect"]
     print(f"\n== CHẮC CHẮN là hóa đơn: {len(certain)} ==")
     for c in certain:
-        print(f"  [{c.score}] {c.sender[:40]:40s} | {c.subject[:60]}")
+        print(f"  [{c.score}] {c.account:22s} | {c.sender[:34]:34s} | {c.subject[:48]}")
     print(f"\n== NGHI NGỜ (cần duyệt): {len(suspect)} ==")
     for c in suspect:
-        print(f"  [{c.score}] {c.sender[:40]:40s} | {c.subject[:60]}  -> {', '.join(c.reasons)}")
+        print(f"  [{c.score}] {c.account:22s} | {c.sender[:34]:34s} | {c.subject[:48]}  -> {', '.join(c.reasons)}")
     if not certain and not suspect:
         print("Không tìm thấy email hóa đơn nào trong cửa sổ thời gian này.")
 
@@ -102,45 +109,45 @@ def cmd_collect(settings: Settings, args) -> int:
     from .mailscan import MailScanner
     manifest_path = settings.data_dir / ".collected.json"
     manifest = load_manifest(manifest_path)
-    scanner = MailScanner(settings)
-    scanner.connect()
-    try:
-        cands = scanner.scan(args.from_date, args.to_date)
-        wanted = [c for c in cands if c.bucket == "certain"
-                  or (args.include_suspect and c.bucket == "suspect")]
-        wanted, already = filter_uncollected(wanted, manifest)
-        if already:
-            print(f"Bỏ qua {len(already)} email đã tải trước đó (idempotent).")
-        print(f"Sẽ tải {len(wanted)} email hóa đơn...")
-        need_manual = []
-        saved_count = 0
-        for c in wanted:
-            msg = scanner.fetch_message(c.uid)
-            files = invoice_files(msg)
-            if not has_kind(files, "xml") and not has_kind(files, "pdf"):
-                links = extract_links(msg, settings.classifier.issuer_domains + ["tracuu", "hoadon"])
-                portal_files = try_fetch_links(links)  # empty registry -> [] -> manual
-                if portal_files:
-                    supplier, ngay = _peek_supplier_date(portal_files, c)
-                    saved = save_invoice_files(portal_files, settings.data_dir, ngay, supplier)
-                    mark_collected(manifest, c.message_id, saved)
-                    saved_count += 1
-                    print(f"  ✓ (portal) {c.subject[:45]} -> {saved.get('xml') or saved.get('pdf')}")
+    need_manual = []
+    saved_count = 0
+    for account in settings.accounts:
+        scanner = MailScanner(settings, account)
+        scanner.connect()
+        try:
+            cands = scanner.scan(args.from_date, args.to_date)
+            wanted = [c for c in cands if c.bucket == "certain"
+                      or (args.include_suspect and c.bucket == "suspect")]
+            wanted, already = filter_uncollected(wanted, manifest)
+            print(f"[{account.user}] tải {len(wanted)} email"
+                  + (f" (bỏ qua {len(already)} đã tải)" if already else ""))
+            for c in wanted:
+                msg = scanner.fetch_message(c.uid)
+                files = invoice_files(msg)
+                if not has_kind(files, "xml") and not has_kind(files, "pdf"):
+                    links = extract_links(msg, settings.classifier.issuer_domains + ["tracuu", "hoadon"])
+                    portal_files = try_fetch_links(links)  # empty registry -> [] -> manual
+                    if portal_files:
+                        supplier, ngay = _peek_supplier_date(portal_files, c)
+                        saved = save_invoice_files(portal_files, settings.data_dir, ngay, supplier)
+                        mark_collected(manifest, c.message_id, saved)
+                        saved_count += 1
+                        print(f"  ✓ (portal) {c.subject[:45]} -> {saved.get('xml') or saved.get('pdf')}")
+                        continue
+                    need_manual.append((c, links))
                     continue
-                need_manual.append((c, links))
-                continue
-            supplier, ngay = _peek_supplier_date(files, c)
-            saved = save_invoice_files(files, settings.data_dir, ngay, supplier)
-            mark_collected(manifest, c.message_id, saved)
-            saved_count += 1
-            print(f"  ✓ {c.subject[:50]} -> {saved.get('xml') or saved.get('pdf')}")
-        save_manifest(manifest_path, manifest)
-    finally:
-        scanner.close()
+                supplier, ngay = _peek_supplier_date(files, c)
+                saved = save_invoice_files(files, settings.data_dir, ngay, supplier)
+                mark_collected(manifest, c.message_id, saved)
+                saved_count += 1
+                print(f"  ✓ {c.subject[:50]} -> {saved.get('xml') or saved.get('pdf')}")
+        finally:
+            scanner.close()
+    save_manifest(manifest_path, manifest)
     if need_manual:
         print(f"\n⚠ {len(need_manual)} hóa đơn chỉ có LINK (cần adapter / tải tay):")
         for c, links in need_manual:
-            print(f"  - {c.sender} | {c.subject[:50]} | {links or 'không thấy link'}")
+            print(f"  - [{c.account}] {c.sender} | {c.subject[:45]} | {links or 'không thấy link'}")
     print(f"\nĐã tải {saved_count} hóa đơn có file.")
     return 0
 

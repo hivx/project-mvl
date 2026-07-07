@@ -14,6 +14,7 @@ from .models import EmailCandidate
 
 CANDIDATE_HEADERS = [
     "Rổ", "Điểm", "Người gửi", "Tiêu đề", "Ngày email", "XML", "PDF", "Lý do",
+    "Hộp thư",
 ]
 
 
@@ -34,5 +35,6 @@ def write_candidates_csv(candidates: Iterable[EmailCandidate], path) -> Path:
                 "x" if c.has_xml else "",
                 "x" if c.has_pdf else "",
                 "; ".join(c.reasons),
+                c.account,
             ])
     return path

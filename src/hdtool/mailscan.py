@@ -16,7 +16,7 @@ from email.message import Message
 from typing import Iterable, Optional
 
 from .classify import score_email
-from .config import Settings
+from .config import Account, Settings
 from .models import EmailCandidate
 
 _MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -83,16 +83,21 @@ def _decode(s: Optional[str]) -> str:
 class MailScanner:
     """Thin read-only IMAP client for scanning and fetching invoice emails."""
 
-    def __init__(self, settings: Settings):
+    def __init__(self, settings: Settings, account: Optional[Account] = None):
         self.s = settings
+        if account is None:
+            account = (settings.accounts[0] if settings.accounts else
+                       Account(settings.imap_host, settings.imap_port,
+                               settings.imap_user, settings.imap_password))
+        self.account = account
         self.imap: Optional[imaplib.IMAP4_SSL] = None
         self.folder = "INBOX"
 
     def connect(self) -> None:
         self.imap = imaplib.IMAP4_SSL(
-            self.s.imap_host, self.s.imap_port, ssl_context=ssl.create_default_context()
+            self.account.host, self.account.port, ssl_context=ssl.create_default_context()
         )
-        self.imap.login(self.s.imap_user, self.s.imap_password)
+        self.imap.login(self.account.user, self.account.password)
         typ, data = self.imap.list()
         all_mail = pick_all_mail(data) if typ == "OK" else None
         self.folder = all_mail or "INBOX"
@@ -149,7 +154,7 @@ class MailScanner:
         cand = score_email(
             sender=sender, subject=subject, has_xml=has_xml, has_pdf=has_pdf,
             has_link=False, cfg=self.s.classifier, uid=uid, message_id=message_id,
-            internal_date=internal,
+            internal_date=internal, account=self.account.user,
         )
         return cand if cand.bucket != "ignore" else None
 

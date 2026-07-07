@@ -60,3 +60,4 @@ class EmailCandidate:
     has_pdf: bool = False
     has_link: bool = False
     bucket: str = "suspect"   # certain | suspect | ignore
+    account: str = ""         # which mailbox this email came from
