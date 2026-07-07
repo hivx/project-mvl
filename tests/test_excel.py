@@ -60,6 +60,30 @@ def test_totals_row_present(tmp_path):
     assert Decimal(str(ws.cell(row=tot_row, column=tong_col).value)) == Decimal("3300000")
 
 
+def test_summary_notes_unallocated_difference(tmp_path):
+    # TgTCThue (26038) exceeds the rate-line sum (24538) by 1500 -> summary notes it
+    inv = make_inv("1", tax_lines=[TaxLine("8%", Decimal("24538"), Decimal("1962"))],
+                   chua="26038", thue="1962", tong="28000")
+    res = aggregate([inv], buyer_msts={MIYANO})
+    out = tmp_path / "r.xlsx"
+    write_workbook(res, out)
+    ws = openpyxl.load_workbook(out)["Tổng hợp theo thuế suất"]
+    text = " ".join(str(c.value) for row in ws.iter_rows() for c in row if c.value)
+    assert "1500" in text or "1,500" in text          # the 1500 difference is shown
+    assert "hóa đơn" in text.lower() or "chênh" in text.lower() or "bảng kê" in text.lower()
+
+
+def test_summary_no_note_when_reconciled(tmp_path):
+    inv = make_inv("1", tax_lines=[TaxLine("10%", Decimal("1000000"), Decimal("100000"))],
+                   chua="1000000", thue="100000", tong="1100000")
+    res = aggregate([inv], buyer_msts={MIYANO})
+    out = tmp_path / "r.xlsx"
+    write_workbook(res, out)
+    ws = openpyxl.load_workbook(out)["Tổng hợp theo thuế suất"]
+    text = " ".join(str(c.value) for row in ws.iter_rows() for c in row if c.value)
+    assert "chênh" not in text.lower()
+
+
 def test_summary_sheet_groups_rates(tmp_path):
     inv = make_inv("9", tax_lines=[
         TaxLine("10%", Decimal("2000000"), Decimal("200000")),

@@ -132,6 +132,18 @@ def _write_summary(wb, result: AggregateResult):
     for c in (2, 3):
         for r in range(2, trow + 1):
             ws.cell(row=r, column=c).number_format = _MONEY
+
+    # Numbers are kept exactly as in the XML. If the invoice-level pre-tax total
+    # differs from the rate-bucket sum (issuer left some non-taxable amount not
+    # itemized by rate), note it transparently instead of altering figures.
+    diff = result.total_chua_thue - tot_chua
+    if diff != 0:
+        note = (
+            f"Ghi chú: tổng chưa thuế theo bảng kê = {_num(result.total_chua_thue)}; "
+            f"chênh {_num(diff)} so với tổng theo thuế suất — do một số hóa đơn có phần "
+            f"không chịu thuế/phí mà nhà phát hành không tách thành dòng thuế suất riêng."
+        )
+        ws.cell(row=ws.max_row + 2, column=1, value=note).font = Font(italic=True)
     _autosize(ws, SUMMARY_HEADERS)
 
 

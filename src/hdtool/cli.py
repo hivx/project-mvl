@@ -199,11 +199,14 @@ def cmd_report(settings: Settings, args) -> int:
         return 1
     result, skipped, manual = build_report(source, args.from_date, args.to_date,
                                             settings.buyer_msts, out)
+    def _money(x):
+        return int(x) if x == x.to_integral_value() else x
+
     print(f"Đã xuất: {out}")
     print(f"  Hóa đơn trong kỳ: {len(result.invoices)}")
-    print(f"  Tổng tiền chưa thuế: {result.total_chua_thue:,}")
-    print(f"  Tổng tiền thuế    : {result.total_thue:,}")
-    print(f"  Tổng thanh toán   : {result.total_thanh_toan:,}")
+    print(f"  Tổng tiền chưa thuế: {_money(result.total_chua_thue):,}")
+    print(f"  Tổng tiền thuế    : {_money(result.total_thue):,}")
+    print(f"  Tổng thanh toán   : {_money(result.total_thanh_toan):,}")
     if not settings.buyer_msts:
         print("  (Chưa cấu hình MIYANO_MST → không lọc mua-vào, chỉ gắn cờ.)")
     if skipped:
