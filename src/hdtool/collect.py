@@ -67,7 +67,12 @@ def iter_attachments(msg: Message) -> list[Attachment]:
 
 
 def expand_zips(atts: list[Attachment]) -> list[Attachment]:
-    """Replace .zip attachments with their inner .xml/.pdf members."""
+    """Replace .zip attachments with their inner .xml/.pdf members.
+
+    Encrypted or unreadable members are skipped (never crash the batch). If a
+    zip yields nothing extractable, the original zip is kept so the file isn't
+    lost — the user can open it manually.
+    """
     result: list[Attachment] = []
     for a in atts:
         if a.kind != "zip":
@@ -78,10 +83,17 @@ def expand_zips(atts: list[Attachment]) -> list[Attachment]:
         except zipfile.BadZipFile:
             result.append(a)
             continue
+        extracted: list[Attachment] = []
         for name in zf.namelist():
             k = _kind(name)
-            if k in ("xml", "pdf"):
-                result.append(Attachment(Path(name).name, k, zf.read(name)))
+            if k not in ("xml", "pdf"):
+                continue
+            try:
+                extracted.append(Attachment(Path(name).name, k, zf.read(name)))
+            except (RuntimeError, zipfile.BadZipFile):
+                # encrypted / corrupt member -> skip, keep going
+                continue
+        result.extend(extracted if extracted else [a])
     return result
 
 

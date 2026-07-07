@@ -3,6 +3,7 @@ import io
 import zipfile
 from datetime import date
 from email.message import EmailMessage
+from pathlib import Path
 
 from hdtool.collect import (
     slug, iter_attachments, invoice_files, extract_links,
@@ -38,6 +39,15 @@ def test_iter_attachments_returns_xml_and_pdf():
     kinds = sorted(a.kind for a in atts)
     assert kinds == ["pdf", "xml"]
     assert has_kind(atts, "xml")
+
+
+def test_encrypted_zip_does_not_crash():
+    # An encrypted zip member must be skipped gracefully, not crash the batch.
+    data = (Path(__file__).parent / "fixtures" / "encrypted_invoice.zip").read_bytes()
+    m = make_email(attachments=[("encrypted_invoice.zip", "zip", data)])
+    files = invoice_files(m)  # must not raise RuntimeError
+    # nothing extractable -> keep the original zip so the file isn't lost
+    assert [f.kind for f in files] == ["zip"]
 
 
 def test_invoice_files_unzips_inner_xml():

@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Optional
 
 from .adapters import try_fetch_links
-from .collect import extract_links, has_kind, invoice_files, save_invoice_files
+from .collect import extract_links, invoice_files, save_invoice_files
 from .config import Settings, load_settings
 from .manifest import filter_uncollected, load_manifest, mark_collected, save_manifest
 from .parse_xml import InvoiceParseError, parse_invoice_xml
@@ -110,6 +110,7 @@ def cmd_collect(settings: Settings, args) -> int:
     manifest_path = settings.data_dir / ".collected.json"
     manifest = load_manifest(manifest_path)
     need_manual = []
+    errors = []
     saved_count = 0
     for account in settings.accounts:
         scanner = MailScanner(settings, account)
@@ -122,32 +123,37 @@ def cmd_collect(settings: Settings, args) -> int:
             print(f"[{account.user}] tải {len(wanted)} email"
                   + (f" (bỏ qua {len(already)} đã tải)" if already else ""))
             for c in wanted:
-                msg = scanner.fetch_message(c.uid)
-                files = invoice_files(msg)
-                if not has_kind(files, "xml") and not has_kind(files, "pdf"):
-                    links = extract_links(msg, settings.classifier.issuer_domains + ["tracuu", "hoadon"])
-                    portal_files = try_fetch_links(links)  # empty registry -> [] -> manual
-                    if portal_files:
-                        supplier, ngay = _peek_supplier_date(portal_files, c)
-                        saved = save_invoice_files(portal_files, settings.data_dir, ngay, supplier)
-                        mark_collected(manifest, c.message_id, saved)
-                        saved_count += 1
-                        print(f"  ✓ (portal) {c.subject[:45]} -> {saved.get('xml') or saved.get('pdf')}")
-                        continue
-                    need_manual.append((c, links))
-                    continue
-                supplier, ngay = _peek_supplier_date(files, c)
-                saved = save_invoice_files(files, settings.data_dir, ngay, supplier)
-                mark_collected(manifest, c.message_id, saved)
-                saved_count += 1
-                print(f"  ✓ {c.subject[:50]} -> {saved.get('xml') or saved.get('pdf')}")
+                # One bad email must never sink the whole batch.
+                try:
+                    msg = scanner.fetch_message(c.uid)
+                    files = invoice_files(msg)
+                    if not files:
+                        links = extract_links(msg, settings.classifier.issuer_domains + ["tracuu", "hoadon"])
+                        portal_files = try_fetch_links(links)  # empty registry -> [] -> manual
+                        if not portal_files:
+                            need_manual.append((c, links))
+                            continue
+                        files = portal_files
+                    supplier, ngay = _peek_supplier_date(files, c)
+                    saved = save_invoice_files(files, settings.data_dir, ngay, supplier)
+                    mark_collected(manifest, c.message_id, saved)
+                    saved_count += 1
+                    where = saved.get("xml") or saved.get("pdf") or saved.get("zip")
+                    print(f"  ✓ {c.subject[:50]} -> {where}")
+                except Exception as exc:  # noqa: BLE001 - keep going on any single email
+                    errors.append((c, str(exc)))
+                    print(f"  ✗ lỗi: {c.subject[:45]} — {exc}")
         finally:
+            save_manifest(manifest_path, manifest)   # persist progress per account
             scanner.close()
-    save_manifest(manifest_path, manifest)
     if need_manual:
         print(f"\n⚠ {len(need_manual)} hóa đơn chỉ có LINK (cần adapter / tải tay):")
         for c, links in need_manual:
             print(f"  - [{c.account}] {c.sender} | {c.subject[:45]} | {links or 'không thấy link'}")
+    if errors:
+        print(f"\n✗ {len(errors)} email lỗi khi tải (bỏ qua, không làm sập batch):")
+        for c, msg in errors[:20]:
+            print(f"  - [{c.account}] {c.subject[:45]} — {msg}")
     print(f"\nĐã tải {saved_count} hóa đơn có file.")
     return 0
 
