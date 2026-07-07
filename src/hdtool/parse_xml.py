@@ -18,6 +18,14 @@ class InvoiceParseError(Exception):
     """Raised when XML is malformed or lacks the core invoice structure."""
 
 
+class MalformedXMLError(InvoiceParseError):
+    """XML is not well-formed (corrupt / truncated attachment)."""
+
+
+class NotAnInvoiceError(InvoiceParseError):
+    """Well-formed XML but not a TCT invoice (e.g. a tax notification)."""
+
+
 def _dec(s: Optional[str], default: str = "0") -> Decimal:
     if s is None:
         s = default
@@ -54,12 +62,12 @@ def parse_invoice_xml(data: bytes) -> Invoice:
     try:
         root = ET.fromstring(data)
     except ET.ParseError as exc:
-        raise InvoiceParseError(f"Malformed XML: {exc}") from exc
+        raise MalformedXMLError(f"Malformed XML: {exc}") from exc
 
     ttchung = X.find_first(root, "TTChung")
     ndhdon = X.find_first(root, "NDHDon")
     if ttchung is None or ndhdon is None:
-        raise InvoiceParseError("Missing TTChung/NDHDon (not a TCT invoice?)")
+        raise NotAnInvoiceError("Không có TTChung/NDHDon — không phải hóa đơn TCT")
 
     so_hd = X.text(ttchung, "SHDon", default="") or ""
     mau_so = X.text(ttchung, "KHMSHDon", default="") or ""

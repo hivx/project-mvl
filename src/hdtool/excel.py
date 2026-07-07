@@ -51,7 +51,8 @@ def write_workbook(result: AggregateResult, path, skipped: Optional[list] = None
 
     _write_bang_ke(wb, result)
     _write_summary(wb, result)
-    _write_skipped(wb, result, skipped or [])
+    _write_skipped(wb, skipped or [])
+    _write_manual_retrieval(wb, skipped or [])
     _write_manual_entry(wb, manual_entry or [])
 
     wb.save(path)
@@ -134,20 +135,44 @@ def _write_summary(wb, result: AggregateResult):
     _autosize(ws, SUMMARY_HEADERS)
 
 
-def _write_skipped(wb, result: AggregateResult, skipped: list):
-    """Invoices excluded (wrong buyer) + any external skipped items."""
-    if not result.excluded and not skipped:
+GROUP_LABELS = {
+    "ngoai_ky": "Ngoài kỳ",
+    "khong_ngay_lap": "Không có ngày lập",
+    "sai_ben_mua": "Sai bên mua (CC nhầm)",
+    "trung_forward": "Trùng forward (vô hại)",
+    "khong_phai_hoa_don": "Không phải hóa đơn (vd thông báo thuế)",
+    "khong_doc_duoc": "KHÔNG đọc được — cần lấy tay",
+}
+
+
+def _write_skipped(wb, skipped: list):
+    """All skipped items with a Nhóm column: ngoài kỳ / sai bên mua / trùng
+    forward / không đọc được. Each item is (ident, group, reason)."""
+    if not skipped:
         return
+    headers = ["Định danh", "Nhóm", "Lý do"]
     ws = wb.create_sheet("Bỏ qua")
-    ws.append(["Số HĐ", "MST bán", "MST mua", "Lý do"])
-    _style_header(ws, 4)
-    for inv, reason in result.excluded:
-        ws.append([inv.so_hd, inv.mst_ban, inv.mst_mua, reason])
-    for item in skipped:
-        # item: (identifier, reason)
-        ident, reason = item if isinstance(item, tuple) else (str(item), "")
-        ws.append([ident, "", "", reason])
-    _autosize(ws, ["Số HĐ", "MST bán", "MST mua", "Lý do"])
+    ws.append(headers)
+    _style_header(ws, len(headers))
+    for ident, group, reason in skipped:
+        ws.append([ident, GROUP_LABELS.get(group, group), reason])
+    _autosize(ws, headers)
+
+
+def _write_manual_retrieval(wb, skipped: list):
+    """The actionable subset: invoices whose XML can't be read and have no
+    original in the data — these must be fetched by hand."""
+    gaps = [(ident, reason) for ident, group, reason in skipped
+            if group == "khong_doc_duoc"]
+    if not gaps:
+        return
+    headers = ["Hóa đơn (không đọc được)", "Ghi chú"]
+    ws = wb.create_sheet("Cần lấy tay")
+    ws.append(headers)
+    _style_header(ws, len(headers))
+    for ident, reason in gaps:
+        ws.append([ident, reason])
+    _autosize(ws, headers)
 
 
 def _write_manual_entry(wb, manual_entry: list):

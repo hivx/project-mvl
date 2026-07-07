@@ -87,6 +87,44 @@ def test_find_manual_entry_pdfs_flags_orphan_pdf(tmp_path):
     assert [Path(m).name for m in manual] == ["scan_only.pdf"]
 
 
+def test_build_report_separates_duplicate_forward_from_real_gap(tmp_path):
+    # good invoice (parses) + a corrupt file with the SAME basename (harmless
+    # forward duplicate) + a corrupt file with a UNIQUE name (real gap).
+    data = _tree(tmp_path, "inv_10pct.xml")             # data/2026-06/abc/inv_10pct.xml (good)
+    fwd = data / "2026-06" / "fwd"; fwd.mkdir()
+    (fwd / "inv_10pct.xml").write_bytes(b"garbage-not-xml")     # dup -> trung_forward
+    (data / "2026-06" / "abc" / "orphan_bad.xml").write_bytes(b"garbage-not-xml")  # gap
+    out = tmp_path / "r.xlsx"
+    result, skipped, manual = build_report(data, date(2026, 6, 1), date(2026, 6, 30),
+                                           buyer_msts={MIYANO}, out_path=out)
+    groups = {Path(ident).name: grp for ident, grp, _reason in skipped}
+    assert groups["inv_10pct.xml"] == "trung_forward"   # same-named good original exists
+    assert groups["orphan_bad.xml"] == "khong_doc_duoc"  # no original -> real gap
+    wb = openpyxl.load_workbook(out)
+    assert "Cần lấy tay" in wb.sheetnames
+    # the real gap is listed on the actionable sheet; the duplicate is not
+    gap_cells = [c for row in wb["Cần lấy tay"].iter_rows(values_only=True) for c in row]
+    joined = " ".join(str(v) for v in gap_cells)
+    assert "orphan_bad.xml" in joined
+    assert "inv_10pct.xml" not in joined
+
+
+def test_non_invoice_xml_not_flagged_as_gap(tmp_path):
+    data = _tree(tmp_path, "inv_10pct.xml")
+    # a well-formed XML that is not an invoice (tax notification)
+    (data / "2026-06" / "abc" / "Thong bao thue.xml").write_bytes(
+        b"<?xml version='1.0' encoding='UTF-8'?><TBao><ND>x</ND></TBao>")
+    out = tmp_path / "r.xlsx"
+    result, skipped, manual = build_report(data, date(2026, 6, 1), date(2026, 6, 30),
+                                           buyer_msts={MIYANO}, out_path=out)
+    groups = {Path(ident).name: grp for ident, grp, _r in skipped}
+    assert groups["Thong bao thue.xml"] == "khong_phai_hoa_don"
+    wb = openpyxl.load_workbook(out)
+    if "Cần lấy tay" in wb.sheetnames:
+        joined = " ".join(str(c) for row in wb["Cần lấy tay"].iter_rows(values_only=True) for c in row)
+        assert "Thong bao thue" not in joined
+
+
 def test_build_report_writes_manual_entry_sheet(tmp_path):
     data = _tree(tmp_path, "inv_10pct.xml")
     dest = data / "2026-06" / "abc"

@@ -5,7 +5,9 @@ from pathlib import Path
 
 import pytest
 
-from hdtool.parse_xml import parse_invoice_xml, InvoiceParseError
+from hdtool.parse_xml import (
+    parse_invoice_xml, InvoiceParseError, MalformedXMLError, NotAnInvoiceError,
+)
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -73,3 +75,15 @@ def test_dedup_key_combines_seller_symbol_number():
 def test_malformed_xml_raises_parse_error():
     with pytest.raises(InvoiceParseError):
         parse_invoice_xml(load("inv_malformed.xml"))
+
+
+def test_malformed_is_malformed_error():
+    with pytest.raises(MalformedXMLError):
+        parse_invoice_xml(load("inv_malformed.xml"))
+
+
+def test_wellformed_non_invoice_raises_not_an_invoice():
+    # valid XML but not a TCT invoice (e.g. a tax notification) -> distinct error
+    xml = b"<?xml version='1.0' encoding='UTF-8'?><ThongBao><NoiDung>x</NoiDung></ThongBao>"
+    with pytest.raises(NotAnInvoiceError):
+        parse_invoice_xml(xml)
