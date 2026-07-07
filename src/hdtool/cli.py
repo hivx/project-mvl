@@ -154,8 +154,8 @@ def cmd_report(settings: Settings, args) -> int:
     if not source.exists():
         print(f"Không tìm thấy thư mục nguồn: {source}. Hãy chạy 'collect' trước.")
         return 1
-    result, skipped = build_report(source, args.from_date, args.to_date,
-                                   settings.buyer_msts, out)
+    result, skipped, manual = build_report(source, args.from_date, args.to_date,
+                                            settings.buyer_msts, out)
     print(f"Đã xuất: {out}")
     print(f"  Hóa đơn trong kỳ: {len(result.invoices)}")
     print(f"  Tổng tiền chưa thuế: {result.total_chua_thue:,}")
@@ -165,6 +165,8 @@ def cmd_report(settings: Settings, args) -> int:
         print("  (Chưa cấu hình MIYANO_MST → không lọc mua-vào, chỉ gắn cờ.)")
     if skipped:
         print(f"  Bỏ qua/cần xem lại: {len(skipped)} (xem sheet 'Bỏ qua')")
+    if manual:
+        print(f"  Chỉ có PDF, cần nhập tay: {len(manual)} (xem sheet 'Cần nhập tay')")
     return 0
 
 

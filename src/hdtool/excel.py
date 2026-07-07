@@ -44,13 +44,15 @@ def _rate_display(inv: Invoice) -> str:
     return ", ".join(rates)
 
 
-def write_workbook(result: AggregateResult, path, skipped: Optional[list] = None) -> Path:
+def write_workbook(result: AggregateResult, path, skipped: Optional[list] = None,
+                   manual_entry: Optional[list] = None) -> Path:
     path = Path(path)
     wb = Workbook()
 
     _write_bang_ke(wb, result)
     _write_summary(wb, result)
     _write_skipped(wb, result, skipped or [])
+    _write_manual_entry(wb, manual_entry or [])
 
     wb.save(path)
     return path
@@ -146,6 +148,19 @@ def _write_skipped(wb, result: AggregateResult, skipped: list):
         ident, reason = item if isinstance(item, tuple) else (str(item), "")
         ws.append([ident, "", "", reason])
     _autosize(ws, ["Số HĐ", "MST bán", "MST mua", "Lý do"])
+
+
+def _write_manual_entry(wb, manual_entry: list):
+    """PDF-only invoices that need manual entry / OCR (no XML to read numbers)."""
+    if not manual_entry:
+        return
+    headers = ["File PDF (không có XML)", "Ghi chú"]
+    ws = wb.create_sheet("Cần nhập tay")
+    ws.append(headers)
+    _style_header(ws, len(headers))
+    for p in manual_entry:
+        ws.append([p, "Chỉ có PDF — cần nhập tay/OCR, không lấy số tự động"])
+    _autosize(ws, headers)
 
 
 def _autosize(ws, headers):

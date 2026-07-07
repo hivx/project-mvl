@@ -60,17 +60,28 @@ def filter_by_period(
     return keep, dropped
 
 
+def find_manual_entry_pdfs(data_dir, invoices: list[Invoice]) -> list[str]:
+    """PDF files with no XML (not claimed by any parsed invoice).
+
+    These are "cần nhập tay/OCR": we never guess numbers from a PDF.
+    """
+    claimed = {inv.pdf_path for inv in invoices if inv.pdf_path}
+    all_pdfs = [str(p) for p in sorted(Path(data_dir).rglob("*.pdf"))]
+    return [p for p in all_pdfs if p not in claimed]
+
+
 def build_report(
     data_dir, from_date: date, to_date: date, buyer_msts: set[str], out_path
-) -> tuple[AggregateResult, list[tuple[str, str]]]:
-    """Full report stage. Returns (aggregate result, skipped items)."""
+) -> tuple[AggregateResult, list[tuple[str, str]], list[str]]:
+    """Full report stage. Returns (aggregate result, skipped items, manual-entry PDFs)."""
     xml_paths = find_xml_files(data_dir)
     invoices, skipped = load_invoices(xml_paths)
+    manual_entry = find_manual_entry_pdfs(data_dir, invoices)
     in_period, dropped = filter_by_period(invoices, from_date, to_date)
     for inv in dropped:
         reason = ("Không có ngày lập" if inv.ngay_lap is None
                   else f"Ngày lập {inv.ngay_lap} ngoài kỳ")
         skipped.append((inv.xml_path or inv.so_hd, reason))
     result = aggregate(in_period, buyer_msts=buyer_msts)
-    write_workbook(result, out_path, skipped=skipped)
-    return result, skipped
+    write_workbook(result, out_path, skipped=skipped, manual_entry=manual_entry)
+    return result, skipped, manual_entry
