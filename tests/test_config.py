@@ -68,6 +68,19 @@ def test_build_settings_multiple_accounts():
     assert all(a.host == "imap.gmail.com" and a.port == 993 for a in s.accounts)
 
 
+def test_build_settings_reads_default_period():
+    s = build_settings({"IMAP_USER": "a@x.vn", "IMAP_APP_PASSWORD": "p"},
+                       {"default_from": "2026-06-01", "default_to": "2026-06-30"})
+    assert s.default_from == "2026-06-01"
+    assert s.default_to == "2026-06-30"
+
+
+def test_default_period_absent_is_none():
+    s = build_settings({"IMAP_USER": "a@x.vn"}, {})
+    assert s.default_from is None
+    assert s.default_to is None
+
+
 def test_load_settings_reads_repo_defaults():
     root = Path(__file__).resolve().parent.parent
     s = load_settings(root, env={"IMAP_USER": "x@y.vn", "IMAP_APP_PASSWORD": "p"})

@@ -1,5 +1,11 @@
 # Cấu hình nhận diện & quét hóa đơn. Sửa file này để mở rộng, không cần đụng code.
 
+# Kỳ mặc định (NGÀY LẬP hóa đơn). Chạy `hdtool run` / `python run.py` không kèm
+# ngày sẽ dùng khoảng này. Truyền --from/--to trên dòng lệnh sẽ ghi đè.
+# Để trống nếu muốn bắt buộc nhập ngày mỗi lần.
+default_from: "2026-06-01"
+default_to: "2026-06-30"
+
 # Cửa sổ ngày quét email = [from - pad_before, to + pad_after], rồi lọc lại theo
 # ngày lập (NLap) trong XML. Nới rộng để bắt hóa đơn tháng trước gửi đầu tháng sau.
 pad_before_days: 15

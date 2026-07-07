@@ -32,6 +32,8 @@ class Settings:
     pad_before_days: int
     pad_after_days: int
     data_dir: Path
+    default_from: Optional[str] = None   # kỳ mặc định (ngày lập HĐ) khi không có --from
+    default_to: Optional[str] = None
 
 
 def parse_msts(raw: Optional[str]) -> set[str]:
@@ -83,6 +85,9 @@ def build_settings(env: dict, cfg: dict, data_dir: Optional[Path] = None) -> Set
         pad_before_days=int(cfg.get("pad_before_days", 15)),
         pad_after_days=int(cfg.get("pad_after_days", 45)),
         data_dir=data_dir or Path("data"),
+        # YAML may parse an unquoted ISO date to a date object; coerce to str.
+        default_from=str(cfg["default_from"]) if cfg.get("default_from") else None,
+        default_to=str(cfg["default_to"]) if cfg.get("default_to") else None,
     )
 
 

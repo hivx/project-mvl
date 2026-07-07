@@ -25,6 +25,27 @@ def _isodate(s: str) -> date:
         raise argparse.ArgumentTypeError(f"Ngày không hợp lệ (cần YYYY-MM-DD): {s}")
 
 
+def _cfg_date(s):
+    if not s:
+        return None
+    try:
+        return date.fromisoformat(s)
+    except ValueError:
+        raise SystemExit(f"Ngày trong settings.yaml không hợp lệ (cần YYYY-MM-DD): {s}")
+
+
+def resolve_period(from_arg, to_arg, settings: "Settings"):
+    """CLI --from/--to win; otherwise fall back to default_from/default_to config."""
+    fd = from_arg or _cfg_date(settings.default_from)
+    td = to_arg or _cfg_date(settings.default_to)
+    if fd is None or td is None:
+        raise SystemExit(
+            "Thiếu khoảng ngày: truyền --from/--to, hoặc đặt default_from/default_to "
+            "trong config/settings.yaml"
+        )
+    return fd, td
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="hdtool", description="Tổng hợp hóa đơn điện tử VN qua email ra Excel"
@@ -32,10 +53,10 @@ def build_parser() -> argparse.ArgumentParser:
     sub = p.add_subparsers(dest="command", required=True)
 
     def add_period(sp):
-        sp.add_argument("--from", dest="from_date", type=_isodate, required=True,
-                        help="Ngày lập hóa đơn từ (YYYY-MM-DD)")
-        sp.add_argument("--to", dest="to_date", type=_isodate, required=True,
-                        help="Ngày lập hóa đơn đến (YYYY-MM-DD)")
+        sp.add_argument("--from", dest="from_date", type=_isodate, default=None,
+                        help="Ngày lập hóa đơn từ (YYYY-MM-DD). Bỏ trống -> dùng default_from")
+        sp.add_argument("--to", dest="to_date", type=_isodate, default=None,
+                        help="Ngày lập hóa đơn đến (YYYY-MM-DD). Bỏ trống -> dùng default_to")
 
     sp_scan = sub.add_parser("scan", help="Dò email hóa đơn (chỉ đọc), không tải")
     add_period(sp_scan)
@@ -209,6 +230,7 @@ _COMMANDS = {"scan": cmd_scan, "collect": cmd_collect, "report": cmd_report, "ru
 def main(argv: Optional[list] = None) -> int:
     args = build_parser().parse_args(argv)
     settings = _load_settings()
+    args.from_date, args.to_date = resolve_period(args.from_date, args.to_date, settings)
     return _COMMANDS[args.command](settings, args)
 
 

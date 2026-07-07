@@ -11,6 +11,7 @@ Ngày ở đây là NGÀY LẬP HÓA ĐƠN (NLap). Tool tự quét rộng ngày 
 from hdtool.cli import main
 
 # ======================= CHỈNH Ở ĐÂY =======================
+# Để trống "" nếu muốn dùng kỳ mặc định trong config/settings.yaml.
 TU_NGAY  = "2026-06-01"   # từ ngày (YYYY-MM-DD)
 DEN_NGAY = "2026-06-30"   # đến ngày (YYYY-MM-DD)
 TAI_CA_NGHI_NGO = True    # True: tải cả email rổ "nghi ngờ"; False: chỉ "chắc chắn"
@@ -18,7 +19,12 @@ FILE_EXCEL = "bang-ke.xlsx"
 # ===========================================================
 
 if __name__ == "__main__":
-    argv = ["run", "--from", TU_NGAY, "--to", DEN_NGAY, "-o", FILE_EXCEL]
+    argv = ["run"]
+    if TU_NGAY:
+        argv += ["--from", TU_NGAY]
+    if DEN_NGAY:
+        argv += ["--to", DEN_NGAY]
+    argv += ["-o", FILE_EXCEL]
     if TAI_CA_NGHI_NGO:
         argv.append("--include-suspect")
     raise SystemExit(main(argv))
