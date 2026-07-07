@@ -1,7 +1,10 @@
 """Tests for mailbox scan pure helpers (no network)."""
 from datetime import date
 
-from hdtool.mailscan import imap_date, search_window, pick_all_mail, detect_kinds_from_bodystructure
+from hdtool.mailscan import (
+    imap_date, search_window, pick_all_mail, detect_kinds_from_bodystructure,
+    extract_uid,
+)
 
 
 def test_imap_date_format():
@@ -35,3 +38,18 @@ def test_detect_kinds_from_bodystructure():
     xml, pdf = detect_kinds_from_bodystructure(meta)
     assert xml is True
     assert pdf is False
+
+
+def test_extract_uid_prefers_gmail_uid_over_seqno():
+    # FETCH response leads with the SEQUENCE number; the real UID is after "UID".
+    meta = '5 (UID 474 INTERNALDATE "06-Jul-2026 03:12:00 +0000" BODYSTRUCTURE (...))'
+    assert extract_uid(meta) == "474"
+
+
+def test_extract_uid_falls_back_to_leading_number():
+    meta = '474 (BODYSTRUCTURE (...))'
+    assert extract_uid(meta) == "474"
+
+
+def test_extract_uid_empty_when_absent():
+    assert extract_uid("(BODYSTRUCTURE (...))") == ""

@@ -55,6 +55,19 @@ def detect_kinds_from_bodystructure(meta: str) -> tuple[bool, bool]:
     return (".xml" in low, ".pdf" in low)
 
 
+def extract_uid(meta: str) -> str:
+    """The IMAP UID from a FETCH metadata line.
+
+    The line leads with the message SEQUENCE number; the real UID follows
+    "UID". We must use the UID (fetches use UID FETCH), never the seqno.
+    """
+    m = re.search(r"UID (\d+)", meta)
+    if m:
+        return m.group(1)
+    m = re.match(r"(\d+) ", meta)
+    return m.group(1) if m else ""
+
+
 def _decode(s: Optional[str]) -> str:
     if not s:
         return ""
@@ -125,8 +138,7 @@ class MailScanner:
         subject = _decode(msg.get("Subject", ""))
         message_id = (msg.get("Message-ID", "") or "").strip()
         has_xml, has_pdf = detect_kinds_from_bodystructure(meta)
-        uid_m = re.match(r"(\d+) ", meta) or re.search(r"UID (\d+)", meta)
-        uid = uid_m.group(1) if uid_m else ""
+        uid = extract_uid(meta)
         internal = None
         dm = re.search(r'INTERNALDATE "(\d{2}-[A-Za-z]{3}-\d{4})', meta)
         if dm:
