@@ -62,10 +62,24 @@ make test         # ./.venv/bin/python -m pytest -q
 - **Degrade an toàn**: thiếu `MIYANO_MST` → không lọc mua-vào, chỉ gắn cờ. Thiếu
   adapter portal → hóa đơn chỉ-link vào danh sách "cần tải tay", không làm sập.
 
+## Phân loại theo công ty & cấu trúc thư mục
+
+- **2 công ty nhận hóa đơn** (bên mua), khai trong `config/settings.yaml` mục
+  `companies` (MST → tên): `0109529507` = **miyano**, `0108186705` = **medcons**.
+  Hóa đơn tới 1 trong các MST này = mua-vào (gắn nhãn công ty, cột "Công ty" trong
+  Excel); MST khác = CC nhầm. Thay cho `MIYANO_MST` cũ (giờ chỉ là fallback).
+- **Cây thư mục tải về**: `data/<công ty>/<YYYY-MM tháng NLap>/<email người gửi>/`.
+  Bên mua không đọc được (PDF-only/XML hỏng) → `_chua-ro-cong-ty/`; bên mua biết
+  nhưng không phải của mình → `_khac/`.
+- Lệnh **`hdtool reorganize --from --to`**: tải lại hóa đơn vào cấu trúc mới; **an
+  toàn** — backup manifest, chỉ xóa thư mục cũ khi mọi hóa đơn đã có bản mới.
+
 ## Bối cảnh quan trọng
 
-- Hộp thư `info@miyano.com.vn` hiện **chưa có/rất ít** hóa đơn XML thật (khảo sát
-  2026-07-07: 0 XML trên 478 email). Tool chạy đúng khi hóa đơn bắt đầu về.
+- Hộp thư hóa đơn thật là **`anh.doan@medcons.vn`** (khai `IMAP_USER_2`), chứa hóa
+  đơn của CẢ hai công ty. `info@miyano.com.vn` gần như không có hóa đơn XML.
 - **Adapter portal chỉ viết được sau khi khảo sát email thật** của từng nhà phát
-  hành — đây là phần duy nhất không làm mù được.
-- `MIYANO_MST` (MST bên mua) chưa được cung cấp — cần điền vào `.env` để bật lọc.
+  hành — đây là phần duy nhất không làm mù được (VNPT/Viettel/easyinvoice chỉ-link).
+- Ghi chú dữ liệu: bản Anh Doan **forward** thường có XML hỏng 37 byte → rơi vào
+  `_chua-ro-cong-ty`, nhưng bản gốc parse được nên KHÔNG mất hóa đơn (đã kiểm chứng
+  118=118 sau migrate).
