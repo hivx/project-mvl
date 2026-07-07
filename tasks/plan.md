@@ -23,8 +23,11 @@ Mỗi task: RED → GREEN → chạy full test → commit.
 - [x] **T11a — Khung adapter portal**: contract `PortalAdapter` + registry +
   fallback "cần tải tay"; `collect` thử adapter cho hóa đơn chỉ-link. Registry
   rỗng mặc định (`hdtool/adapters/`).
-- [ ] **T11b — Adapter cho nhà phát hành cụ thể**: CHẶN cho tới khi có email
-  thật. Cần khảo sát URL + cách tải của nhà phát hành đó.
+- [~] **T11b — Adapter cho nhà phát hành cụ thể**: đã có **template scaffold**
+  (`adapters/example_issuer.py` — no-op, không đăng ký, `fetch` raise). Logic
+  THẬT vẫn CHẶN cho tới khi có email mẫu link-only. Khảo sát hộp thư 2 lần
+  (2026-07-07): 78/478 email giống hóa đơn nhưng **0 có link tra cứu** → chưa
+  có mẫu để dựng. Có mẫu → copy template, điền `fetch`, viết test mock HTTP.
 - [x] **T12 — Đánh dấu hóa đơn PDF-only "cần nhập tay"** rõ ràng trong report
   (hiện chỉ vào "Bỏ qua" khi thiếu XML). Cân nhắc sheet riêng.
 - [ ] **T13 — (Tùy chọn) Tra cứu trạng thái hủy trên cổng TCT** để khẳng định
