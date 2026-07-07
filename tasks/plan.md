@@ -18,7 +18,7 @@ Mỗi task: RED → GREEN → chạy full test → commit.
 
 ## Còn lại
 
-- [ ] **T10 — Idempotent collect**: manifest message-id đã tải để không tải lại;
+- [x] **T10 — Idempotent collect**: manifest message-id đã tải để không tải lại;
   bỏ qua file đã có. (Test được không cần mạng.)
 - [ ] **T11 — Adapter portal đầu tiên**: CHẶN cho tới khi có email thật của một
   nhà phát hành cụ thể. Cần khảo sát URL + cách tải của nhà phát hành đó.

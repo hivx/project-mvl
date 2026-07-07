@@ -9,6 +9,7 @@ from typing import Optional
 
 from .collect import extract_links, has_kind, invoice_files, save_invoice_files
 from .config import Settings, load_settings
+from .manifest import filter_uncollected, load_manifest, mark_collected, save_manifest
 from .parse_xml import InvoiceParseError, parse_invoice_xml
 from .pipeline import build_report
 from .reports import write_candidates_csv
@@ -98,12 +99,17 @@ def cmd_scan(settings: Settings, args) -> int:
 
 def cmd_collect(settings: Settings, args) -> int:
     from .mailscan import MailScanner
+    manifest_path = settings.data_dir / ".collected.json"
+    manifest = load_manifest(manifest_path)
     scanner = MailScanner(settings)
     scanner.connect()
     try:
         cands = scanner.scan(args.from_date, args.to_date)
         wanted = [c for c in cands if c.bucket == "certain"
                   or (args.include_suspect and c.bucket == "suspect")]
+        wanted, already = filter_uncollected(wanted, manifest)
+        if already:
+            print(f"Bỏ qua {len(already)} email đã tải trước đó (idempotent).")
         print(f"Sẽ tải {len(wanted)} email hóa đơn...")
         need_manual = []
         saved_count = 0
@@ -116,8 +122,10 @@ def cmd_collect(settings: Settings, args) -> int:
                 continue
             supplier, ngay = _peek_supplier_date(files, c)
             saved = save_invoice_files(files, settings.data_dir, ngay, supplier)
+            mark_collected(manifest, c.message_id, saved)
             saved_count += 1
             print(f"  ✓ {c.subject[:50]} -> {saved.get('xml') or saved.get('pdf')}")
+        save_manifest(manifest_path, manifest)
     finally:
         scanner.close()
     if need_manual:
