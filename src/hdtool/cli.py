@@ -7,6 +7,7 @@ from datetime import date
 from pathlib import Path
 from typing import Optional
 
+from .adapters import try_fetch_links
 from .collect import extract_links, has_kind, invoice_files, save_invoice_files
 from .config import Settings, load_settings
 from .manifest import filter_uncollected, load_manifest, mark_collected, save_manifest
@@ -118,6 +119,14 @@ def cmd_collect(settings: Settings, args) -> int:
             files = invoice_files(msg)
             if not has_kind(files, "xml") and not has_kind(files, "pdf"):
                 links = extract_links(msg, settings.classifier.issuer_domains + ["tracuu", "hoadon"])
+                portal_files = try_fetch_links(links)  # empty registry -> [] -> manual
+                if portal_files:
+                    supplier, ngay = _peek_supplier_date(portal_files, c)
+                    saved = save_invoice_files(portal_files, settings.data_dir, ngay, supplier)
+                    mark_collected(manifest, c.message_id, saved)
+                    saved_count += 1
+                    print(f"  ✓ (portal) {c.subject[:45]} -> {saved.get('xml') or saved.get('pdf')}")
+                    continue
                 need_manual.append((c, links))
                 continue
             supplier, ngay = _peek_supplier_date(files, c)
