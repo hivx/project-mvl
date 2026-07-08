@@ -66,7 +66,7 @@ Phát hiện khi chạy thật cả 2 hộp thư (263 file tải về, 109 HĐ m
 Spec: `docs/superpowers/specs/2026-07-08-excel-4-sheets-like-sample.md`.
 Mẫu: `docs/MVL 6.26_tai-hoa-don_muaVao_...xlsx` (4 sheet, cấp dòng SP).
 
-- [ ] **T23 — Model + parser dòng SP & trường mở rộng**: `ProductLine`, thêm
+- [x] **T23 — Model + parser dòng SP & trường mở rộng**: `ProductLine`, thêm
   địa chỉ/CKTM/phí/tỷ giá/ngày ký/mã tra cứu vào `Invoice`; parse `DSHHDVu`.
   Fixture XML tổng hợp có dòng SP + chiết khấu. Test `test_parse_xml`.
 - [ ] **T24 — Writer 4 sheet**: viết lại `write_workbook` xuất Chi tiết SP / BK

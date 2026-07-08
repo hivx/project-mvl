@@ -16,6 +16,24 @@ class TaxLine:
 
 
 @dataclass
+class ProductLine:
+    """One goods/service line item (NDHDon/DSHHDVu/HHDVu).
+
+    ``tinh_chat`` is the raw TChat code (1=hàng hóa/dịch vụ, 2=khuyến mại,
+    3=chiết khấu thương mại, 4=ghi chú, 5=hàng hoá đặc trưng). Amounts are the
+    raw XML values (positive); the reporting layer flips the sign for discounts.
+    """
+    tinh_chat: str
+    ma_hang: str
+    ten_hang: str
+    dvt: str
+    so_luong: Decimal
+    don_gia: Decimal
+    thanh_tien: Decimal
+    thue_suat: str
+
+
+@dataclass
 class Invoice:
     """A parsed e-invoice. Amounts come only from XML (never guessed)."""
     so_hd: str
@@ -37,6 +55,16 @@ class Invoice:
     # loai: mua_vao | ban_ra | khong_ro
     loai: str = "khong_ro"
     cong_ty: str = ""          # tên công ty bên mua (miyano/medcons) nếu là mua-vào
+    # Trường mở rộng để xuất bảng giống mẫu (đợt 4). Đều có default -> code cũ chạy nguyên.
+    dia_chi_ban: str = ""
+    dia_chi_mua: str = ""
+    ngay_ky: Optional[date] = None       # mặc định = ngay_lap nếu XML không có
+    ty_gia: Decimal = Decimal(1)
+    tong_cktm: Decimal = Decimal(0)      # tổng chiết khấu thương mại
+    tong_phi: Decimal = Decimal(0)       # tổng phí khác
+    hinh_thuc_tt: str = ""               # hình thức thanh toán (nếu có)
+    ma_tra_cuu: str = ""                 # mã tra cứu / mã CQT (nếu có)
+    product_lines: list["ProductLine"] = field(default_factory=list)
     xml_path: Optional[str] = None
     pdf_path: Optional[str] = None
     source_message_id: Optional[str] = None
