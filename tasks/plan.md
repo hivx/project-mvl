@@ -55,7 +55,7 @@ Phát hiện khi chạy thật cả 2 hộp thư (263 file tải về, 109 HĐ m
 - [x] **T20 — Lọc "Cần nhập tay" theo công ty được chọn**: khi `only_company`
   đặt, `build_report` chỉ quét PDF-only trong `data/<công ty>/` (không gộp PDF của
   medcons/_chua-ro vào báo cáo miyano). Thuần offline, test bằng fixtures.
-- [ ] **T21 — Ghi danh sách "cần tải tay" (HĐ chỉ-link) ra CSV**: `collect` xuất
+- [x] **T21 — Ghi danh sách "cần tải tay" (HĐ chỉ-link) ra CSV**: `collect` xuất
   `data/can-tai-tay-<from>_<to>.csv` (hộp thư, người gửi, tiêu đề, nhà phát hành,
   link tra cứu) để tải tay. Helper thuần `write_manual_links_csv` test được.
 - [ ] **T22 — (HOÃN, cần bạn duyệt riêng) Adapter cổng thật** (meinvoice/

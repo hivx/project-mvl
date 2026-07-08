@@ -3,7 +3,10 @@ import csv
 from datetime import date
 
 from hdtool.models import EmailCandidate
-from hdtool.reports import write_candidates_csv, CANDIDATE_HEADERS
+from hdtool.reports import (
+    write_candidates_csv, CANDIDATE_HEADERS,
+    write_manual_links_csv, MANUAL_LINK_HEADERS,
+)
 
 
 def _cand(bucket="certain", score=5, reasons=None, sender="x@sinvoice.com.vn",
@@ -56,3 +59,31 @@ def test_source_account_column(tmp_path):
     assert "Hộp thư" in rows[0]
     idx = rows[0].index("Hộp thư")
     assert rows[1][idx] == "info@miyano.com.vn"
+
+
+def test_manual_links_csv_uses_link_host_as_issuer(tmp_path):
+    c = _cand(sender="Anh Doan <anh.doan@medcons.vn>", subject="Fwd: HD meinvoice")
+    c.account = "anh.doan@medcons.vn"
+    items = [(c, ["https://www.meinvoice.vn/tra-cuu/?sc=ABC123",
+                  "https://api.meinvoice.vn/x"])]
+    p = write_manual_links_csv(items, tmp_path / "can-tai-tay.csv")
+    assert p.exists()
+    rows = _read(p)
+    assert rows[0] == MANUAL_LINK_HEADERS
+    assert rows[1][0] == "anh.doan@medcons.vn"          # Hộp thư
+    assert "Fwd: HD meinvoice" in rows[1][2]             # Tiêu đề
+    assert rows[1][3] == "meinvoice.vn"                  # Nhà phát hành (www stripped)
+    assert rows[1][4].startswith("https://www.meinvoice.vn/tra-cuu")  # Link tra cứu
+
+
+def test_manual_links_csv_no_link_falls_back_to_sender_domain(tmp_path):
+    c = _cand(sender="noreply@smbc.co.jp", subject="SMBC eInvoice")
+    c.account = "anh.doan@medcons.vn"
+    rows = _read(write_manual_links_csv([(c, [])], tmp_path / "m.csv"))
+    assert rows[1][3] == "smbc.co.jp"     # no link -> sender domain
+    assert rows[1][4] == ""
+
+
+def test_manual_links_csv_empty_writes_header_only(tmp_path):
+    p = write_manual_links_csv([], tmp_path / "m.csv")
+    assert len(_read(p)) == 1

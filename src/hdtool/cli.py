@@ -14,7 +14,7 @@ from .config import Settings, load_settings
 from .manifest import filter_uncollected, load_manifest, mark_collected, save_manifest
 from .parse_xml import InvoiceParseError, parse_invoice_xml
 from .pipeline import build_report, write_report
-from .reports import write_candidates_csv
+from .reports import write_candidates_csv, write_manual_links_csv
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
@@ -198,6 +198,9 @@ def cmd_collect(settings: Settings, args) -> int:
         print(f"\n⚠ {len(need_manual)} hóa đơn chỉ có LINK (cần adapter / tải tay):")
         for c, links in need_manual:
             print(f"  - [{c.account}] {c.sender} | {c.subject[:45]} | {links or 'không thấy link'}")
+        links_csv = settings.data_dir / f"can-tai-tay-{args.from_date}_{args.to_date}.csv"
+        write_manual_links_csv(need_manual, links_csv)
+        print(f"→ Danh sách 'cần tải tay' đã ghi: {links_csv}")
     if errors:
         print(f"\n✗ {len(errors)} email lỗi khi tải (bỏ qua, không làm sập batch):")
         for c, msg in errors[:20]:
