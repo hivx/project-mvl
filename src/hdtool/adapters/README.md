@@ -13,7 +13,8 @@ sau khi khảo sát email thật**. Đây là phần fragile nhất của tool.
 | **`*.einvoice.com.vn`** (saigoncoop…) | GET trang → CSRF token + `idHoaDon` → POST `/tai-ve-hoa-don` → ZIP (XML+PDF) | ✅ **`einvoice_com_vn.py`** (đã đăng ký) |
 | meinvoice.vn (MISA) | SPA; JS đóng gói CDN mã hóa (`meinvoice.misacdn.net/…WebResource.axd`), `ApiUrl=app.meinvoice.vn`, hàm `downloadInvoice` dựng endpoint lúc chạy | ⏳ **cần xem XHR bằng trình duyệt** (DevTools) — HTTP thuần không dò ra |
 | easyinvoice.com.vn (Thái Sơn) | SPA, endpoint `/Invoice/ConvertInv` dựng bằng JS | ⏳ **cần xem XHR bằng trình duyệt** |
-| ehoadon.vn, vnpt-invoice.com.vn | **ReCaptcha** | ❌ cần trình duyệt + nhập captcha tay |
+| **`*-tt78.vnpt-invoice.com.vn`** (VNPT) | Link email `invoice/getinvoice?token=` trả **XML thẳng** (trang tra cứu mới có captcha, link email thì không) | ✅ **`vnpt_invoice.py`** (đã đăng ký) |
+| ehoadon.vn | **ReCaptcha** ở trang tra cứu | ❌ cần trình duyệt + nhập captcha tay |
 
 **Lưu ý**: file tải từ cổng là **XML thật** → chạy pipeline như HĐ có XML (cột
 `Nguồn` = `XML`, tin cậy như email đính kèm). Cổng có thể chậm/timeout/token hết
