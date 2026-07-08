@@ -61,6 +61,22 @@ Phát hiện khi chạy thật cả 2 hộp thư (263 file tải về, 109 HĐ m
 - [ ] **T22 — (HOÃN, cần bạn duyệt riêng) Adapter cổng thật** (meinvoice/
   easyinvoice) tải HĐ chỉ-link — có gọi HTTP ra ngoài, rủi ro cao hơn.
 
+## Đợt 4 — Xuất Excel 4 sheet giống file mẫu
+
+Spec: `docs/superpowers/specs/2026-07-08-excel-4-sheets-like-sample.md`.
+Mẫu: `docs/MVL 6.26_tai-hoa-don_muaVao_...xlsx` (4 sheet, cấp dòng SP).
+
+- [ ] **T23 — Model + parser dòng SP & trường mở rộng**: `ProductLine`, thêm
+  địa chỉ/CKTM/phí/tỷ giá/ngày ký/mã tra cứu vào `Invoice`; parse `DSHHDVu`.
+  Fixture XML tổng hợp có dòng SP + chiết khấu. Test `test_parse_xml`.
+- [ ] **T24 — Writer 4 sheet**: viết lại `write_workbook` xuất Chi tiết SP / BK
+  TT80 / DS hóa đơn / DS sản phẩm (khớp cột mẫu) + giữ Bỏ qua/Cần nhập tay;
+  helper `_display_lines`, nhãn TChat, loại HĐ, dòng chiết khấu âm. Test `test_excel`.
+- [ ] **T25 — CSV theo BK TT80 + truyền kỳ**: CSV bảng kê đổi sang cột TT80;
+  `write_report`/pipeline truyền from/to cho tiêu đề sheet. Test.
+- [ ] **T26 — Tài liệu + chạy thật**: cập nhật CLAUDE.md; xuất lại bảng kê miyano
+  kỳ 06/2026, đối chiếu với file mẫu.
+
 ## Ghi chú
 
 - T11 là phần fragile duy nhất, không làm mù được — chờ email thật.
