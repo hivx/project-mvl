@@ -74,7 +74,7 @@ Mẫu: `docs/MVL 6.26_tai-hoa-don_muaVao_...xlsx` (4 sheet, cấp dòng SP).
   helper `_display_lines`, nhãn TChat, loại HĐ, dòng chiết khấu âm. Test `test_excel`.
 - [x] **T25 — CSV theo BK TT80 + truyền kỳ**: CSV bảng kê đổi sang cột TT80;
   `write_report`/pipeline truyền from/to cho tiêu đề sheet. Test.
-- [ ] **T26 — Tài liệu + chạy thật**: cập nhật CLAUDE.md; xuất lại bảng kê miyano
+- [x] **T26 — Tài liệu + chạy thật**: cập nhật CLAUDE.md; xuất lại bảng kê miyano
   kỳ 06/2026, đối chiếu với file mẫu.
 
 ## Ghi chú

@@ -35,8 +35,8 @@ src/hdtool/
   adapters/      # registry adapter portal theo nhà phát hành — hiện để trống
   aggregate.py   # khử trùng, thay thế, lọc mua-vào, gom thuế suất; only_company
   reports.py     # xuất danh sách ứng viên/nghi ngờ (CSV)
-  excel.py       # xuất bảng kê + sheet tổng hợp (.xlsx)
-  csv_report.py  # xuất bảng kê ra CSV + file phụ tong-hop/bo-qua (UTF-8 BOM)
+  excel.py       # xuất .xlsx 4 sheet giống file mẫu (chi tiết SP/BK TT80/DS HĐ/DS SP)
+  csv_report.py  # xuất bảng kê CSV theo cột BK TT80 + file phụ bo-qua (UTF-8 BOM)
   pipeline.py    # build_report (XML->result, không ghi) + write_report (xlsx/csv)
   interactive.py # menu tương tác: hỏi ngày/công ty/định dạng -> tải + tổng hợp
   cli.py         # scan / collect / report / run / reorganize; no-arg -> menu
