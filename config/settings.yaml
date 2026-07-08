@@ -6,9 +6,10 @@ companies:
   "0109529507": miyano
   "0108186705": medcons
 
-# Kỳ mặc định (NGÀY LẬP hóa đơn). Chạy `hdtool run` / `python run.py` không kèm
-# ngày sẽ dùng khoảng này. Truyền --from/--to trên dòng lệnh sẽ ghi đè.
-# Để trống nếu muốn bắt buộc nhập ngày mỗi lần.
+# Kỳ mặc định (NGÀY LẬP hóa đơn). Trong menu tương tác (`python run.py`) nhấn Enter
+# ở ô ngày sẽ dùng khoảng này; `hdtool run`/`report` không kèm --from/--to cũng vậy.
+# Truyền --from/--to (hoặc gõ ngày trong menu) sẽ ghi đè. Để trống nếu muốn bắt
+# buộc nhập ngày mỗi lần.
 default_from: "2026-06-01"
 default_to: "2026-06-30"
 

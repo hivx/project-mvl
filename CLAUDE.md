@@ -33,11 +33,13 @@ src/hdtool/
   classify.py    # chấm điểm email -> certain/suspect/ignore
   collect.py     # trích attachment (giải nén zip), dò link, lưu cây thư mục
   adapters/      # registry adapter portal theo nhà phát hành — hiện để trống
-  aggregate.py   # khử trùng, xử lý thay thế, lọc mua-vào, gom theo thuế suất
+  aggregate.py   # khử trùng, thay thế, lọc mua-vào, gom thuế suất; only_company
   reports.py     # xuất danh sách ứng viên/nghi ngờ (CSV)
-  excel.py       # xuất bảng kê + sheet tổng hợp
-  pipeline.py    # orchestration report: XML trên đĩa -> Excel (không cần mạng)
-  cli.py         # scan / collect / report / run
+  excel.py       # xuất bảng kê + sheet tổng hợp (.xlsx)
+  csv_report.py  # xuất bảng kê ra CSV + file phụ tong-hop/bo-qua (UTF-8 BOM)
+  pipeline.py    # build_report (XML->result, không ghi) + write_report (xlsx/csv)
+  interactive.py # menu tương tác: hỏi ngày/công ty/định dạng -> tải + tổng hợp
+  cli.py         # scan / collect / report / run / reorganize; no-arg -> menu
 tests/           # pytest, có fixtures/ là XML mẫu chuẩn TCT
 config/settings.yaml
 docs/superpowers/specs/
@@ -49,9 +51,17 @@ tasks/plan.md    # task breakdown còn lại
 ```bash
 make install      # tạo venv + cài editable + dev deps
 make test         # ./.venv/bin/python -m pytest -q
+python run.py                 # MENU TƯƠNG TÁC: hỏi ngày/công ty/định dạng rồi chạy
+./.venv/bin/hdtool            # tương đương — không kèm lệnh thì mở menu
 ./.venv/bin/hdtool scan   --from 2026-06-01 --to 2026-06-30
-./.venv/bin/hdtool report --from 2026-06-01 --to 2026-06-30 -o out.xlsx
+# report cho 1 công ty, chọn định dạng:
+./.venv/bin/hdtool report --from 2026-06-01 --to 2026-06-30 --company miyano --format csv
 ```
+
+Menu tương tác (`python run.py` / `hdtool` không kèm lệnh): nhập từ ngày–đến ngày
+(Enter = kỳ mặc định), chọn **1 công ty** nhận (miyano/medcons), chọn **Excel hoặc
+CSV** → tự collect (readonly) rồi xuất bảng kê CHỈ cho công ty đó. CSV gồm file
+chính + `-tong-hop.csv` + `-bo-qua.csv`.
 
 ## Quy ước phát triển
 

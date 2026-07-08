@@ -46,7 +46,7 @@ Spec: `docs/superpowers/specs/2026-07-08-company-report-selection-and-interactiv
   + `write_report(fmt)` dispatch + cờ `--format {xlsx,csv}`; nhãn `cong_ty_khac`.
 - [x] **T18 — Menu tương tác**: `interactive.py` (`run_interactive`, input tiêm
   được); `run.py` thành launcher; `hdtool` không kèm lệnh → mở menu.
-- [ ] **T19 — Tài liệu**: cập nhật `CLAUDE.md`, `settings.yaml`, `plan.md`; full test.
+- [x] **T19 — Tài liệu**: cập nhật `CLAUDE.md`, `settings.yaml`, `plan.md`; full test.
 
 ## Ghi chú
 
