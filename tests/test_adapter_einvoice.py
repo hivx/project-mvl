@@ -95,3 +95,20 @@ def test_adapter_is_registered_by_default():
     import hdtool.adapters as ad
     importlib.reload(ad)   # re-run package init to restore registration after other tests cleared it
     assert ad.get_adapter("https://saigoncoop.einvoice.com.vn/tra-cuu-hoa-don?token=x") is not None
+
+
+def test_collect_link_extraction_routes_to_adapter():
+    # The collect path: an einvoice.com.vn tra-cứu link in the email body is
+    # extracted and claimed by the registered adapter (so try_fetch_links fetches).
+    import importlib
+    from email.message import EmailMessage
+    import hdtool.adapters as ad
+    importlib.reload(ad)
+    from hdtool.collect import extract_links
+    msg = EmailMessage()
+    msg.set_content("Tra cứu hóa đơn tại: "
+                    "https://saigoncoop.einvoice.com.vn/tra-cuu-hoa-don?token=XYZ")
+    links = extract_links(msg, ["einvoice", "tracuu", "hoadon"])
+    assert any("einvoice.com.vn" in l for l in links)
+    adapter = ad.get_adapter(next(l for l in links if "einvoice.com.vn" in l))
+    assert adapter is not None and adapter.name == "einvoice.com.vn"

@@ -95,7 +95,7 @@ thêm cột **Nguồn** (XML/PDF/Cổng).
   einvoice.com.vn dùng chung nhiều nhà phát hành.
   - [x] **T29a — Adapter `einvoice.com.vn`**: `parse_download_form` + `fetch`
     (GET→POST→giải nén zip→Attachment), đăng ký registry. TDD mock HTTP.
-  - [ ] **T29b — Tích hợp collect**: HĐ chỉ-link qua adapter → lưu `data/`; chạy
+  - [x] **T29b — Tích hợp collect**: HĐ chỉ-link qua adapter → lưu `data/`; chạy
     thật 1 HĐ saigoncoop để kiểm chứng.
   - [ ] **T29c — Mở rộng + tài liệu**: đánh giá meinvoice/easyinvoice (SPA) &
     ehoadon/VNPT (captcha — để trình duyệt/tay); ghi rõ cổng nào tự động được.
