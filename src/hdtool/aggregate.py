@@ -48,7 +48,16 @@ def normalize_rate(s: Optional[str]) -> str:
 
 
 def aggregate(invoices: list[Invoice], buyer_msts: Optional[set[str]] = None,
-              companies: Optional[dict] = None) -> AggregateResult:
+              companies: Optional[dict] = None,
+              only_company: Optional[str] = None) -> AggregateResult:
+    """Aggregate invoices.
+
+    ``only_company`` (a company name from ``companies``) narrows the report to a
+    single buyer: invoices of the *other* buyer company are valid mua-vào but
+    moved to ``excluded`` — they keep ``loai == "mua_vao"`` so the caller can tell
+    them apart from genuine wrong-buyer (CC nhầm) rows. ``None`` keeps every
+    configured company (previous behaviour).
+    """
     companies = companies or {}
     if not buyer_msts and companies:
         buyer_msts = set(companies)
@@ -56,7 +65,17 @@ def aggregate(invoices: list[Invoice], buyer_msts: Optional[set[str]] = None,
 
     kept = _dedup_latest(invoices)
     filtered, excluded = _apply_buyer_filter(kept, buyer_msts, companies)
+    # Mark replacements over BOTH companies before narrowing, so a replacement is
+    # never missed just because we later report only one company.
     _mark_replacements(filtered)
+    if only_company is not None:
+        selected, others = [], []
+        for inv in filtered:
+            (selected if inv.cong_ty == only_company else others).append(inv)
+        for inv in others:
+            excluded.append((inv, f"Công ty {inv.cong_ty or 'khác'} — "
+                                  f"không thuộc báo cáo công ty {only_company}"))
+        filtered = selected
 
     active = [inv for inv in filtered if inv.trang_thai != "nghi_huy"]
     by_rate, tc, tt, ttt = _summarize(active)

@@ -76,6 +76,36 @@ def test_aggregate_labels_company_and_keeps_both_companies():
     assert any(inv.so_hd == "3" for inv, _ in res.excluded)
 
 
+def test_only_company_narrows_report_and_flags_other_company():
+    a = make_inv("1", mst_mua="0109529507")                     # miyano
+    b = make_inv("2", ky_hieu="C22TBB", mst_mua="0108186705")   # medcons
+    other = make_inv("3", ky_hieu="C22TCC", mst_mua="0400000000")  # not ours
+    res = aggregate([a, b, other],
+                    companies={"0109529507": "miyano", "0108186705": "medcons"},
+                    only_company="miyano")
+    # report holds only the selected company
+    assert {inv.so_hd for inv in res.invoices} == {"1"}
+    assert res.invoices[0].cong_ty == "miyano"
+    assert res.total_thanh_toan == Decimal("1100000")
+    assert res.by_rate["10%"]["tien_chua_thue"] == Decimal("1000000")
+
+    excluded = {inv.so_hd: inv for inv, _ in res.excluded}
+    # medcons: valid mua_vao but not this report -> stays loai=mua_vao (=> cong_ty_khac)
+    assert excluded["2"].loai == "mua_vao"
+    assert excluded["2"].cong_ty == "medcons"
+    # a genuine wrong-buyer stays excluded and is NOT mua_vao (=> sai_ben_mua)
+    assert excluded["3"].loai != "mua_vao"
+
+
+def test_only_company_none_keeps_both_companies():
+    a = make_inv("1", mst_mua="0109529507")
+    b = make_inv("2", ky_hieu="C22TBB", mst_mua="0108186705")
+    res = aggregate([a, b],
+                    companies={"0109529507": "miyano", "0108186705": "medcons"},
+                    only_company=None)
+    assert {inv.so_hd for inv in res.invoices} == {"1", "2"}
+
+
 def test_buyer_filter_disabled_keeps_all():
     mine = make_inv("123", mst_mua=MIYANO)
     other = make_inv("77", mst_mua="0400000000", ky_hieu="C22TBB")
