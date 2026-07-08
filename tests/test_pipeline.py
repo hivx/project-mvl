@@ -77,7 +77,7 @@ def test_build_report_end_to_end(tmp_path):
     # only the Miyano-buyer invoice survives the buyer filter
     assert {inv.so_hd for inv in result.invoices} == {"123"}
     wb = openpyxl.load_workbook(out)
-    assert "Bảng kê" in wb.sheetnames
+    assert "BK mua vao TT80" in wb.sheetnames
 
 
 def test_manual_entry_scoped_to_selected_company(tmp_path):

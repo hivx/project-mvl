@@ -69,7 +69,7 @@ Mẫu: `docs/MVL 6.26_tai-hoa-don_muaVao_...xlsx` (4 sheet, cấp dòng SP).
 - [x] **T23 — Model + parser dòng SP & trường mở rộng**: `ProductLine`, thêm
   địa chỉ/CKTM/phí/tỷ giá/ngày ký/mã tra cứu vào `Invoice`; parse `DSHHDVu`.
   Fixture XML tổng hợp có dòng SP + chiết khấu. Test `test_parse_xml`.
-- [ ] **T24 — Writer 4 sheet**: viết lại `write_workbook` xuất Chi tiết SP / BK
+- [x] **T24 — Writer 4 sheet**: viết lại `write_workbook` xuất Chi tiết SP / BK
   TT80 / DS hóa đơn / DS sản phẩm (khớp cột mẫu) + giữ Bỏ qua/Cần nhập tay;
   helper `_display_lines`, nhãn TChat, loại HĐ, dòng chiết khấu âm. Test `test_excel`.
 - [ ] **T25 — CSV theo BK TT80 + truyền kỳ**: CSV bảng kê đổi sang cột TT80;
