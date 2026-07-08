@@ -93,7 +93,7 @@ thêm cột **Nguồn** (XML/PDF/Cổng).
   saigoncoop `*.einvoice.com.vn` tải được bằng HTTP — GET trang → `__RequestVerification
   Token` + `idHoaDon` → POST `/tai-ve-hoa-don` → ZIP chứa XML/PDF. Nền tảng
   einvoice.com.vn dùng chung nhiều nhà phát hành.
-  - [ ] **T29a — Adapter `einvoice.com.vn`**: `parse_download_form` + `fetch`
+  - [x] **T29a — Adapter `einvoice.com.vn`**: `parse_download_form` + `fetch`
     (GET→POST→giải nén zip→Attachment), đăng ký registry. TDD mock HTTP.
   - [ ] **T29b — Tích hợp collect**: HĐ chỉ-link qua adapter → lưu `data/`; chạy
     thật 1 HĐ saigoncoop để kiểm chứng.
