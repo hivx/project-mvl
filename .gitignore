@@ -22,3 +22,6 @@ venv/
 
 # Demo output
 data-demo/
+
+# Backup zip của data (không commit dữ liệu thật)
+/data.zip
