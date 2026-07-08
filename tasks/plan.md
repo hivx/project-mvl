@@ -89,7 +89,7 @@ thêm cột **Nguồn** (XML/PDF/Cổng).
 - [x] **T28 — Bóc PDF**: `pdf_extract.py` — `pdftotext` + `parse_pdf_text` (thuần,
   test trên text mẫu Golden Gate) → `Invoice(nguon="PDF")` cho HĐ chỉ-PDF; gộp vào
   pipeline (gắn cờ). Xử lý HĐ Golden Gate + PDF medcons.
-- [ ] **T29 — Adapter cổng qua HTTP (hướng 2, automation)**. Spike thật (2026-07-08):
+- [x] **T29 — Adapter cổng qua HTTP (hướng 2, automation)**. Spike thật (2026-07-08):
   saigoncoop `*.einvoice.com.vn` tải được bằng HTTP — GET trang → `__RequestVerification
   Token` + `idHoaDon` → POST `/tai-ve-hoa-don` → ZIP chứa XML/PDF. Nền tảng
   einvoice.com.vn dùng chung nhiều nhà phát hành.
@@ -97,7 +97,7 @@ thêm cột **Nguồn** (XML/PDF/Cổng).
     (GET→POST→giải nén zip→Attachment), đăng ký registry. TDD mock HTTP.
   - [x] **T29b — Tích hợp collect**: HĐ chỉ-link qua adapter → lưu `data/`; chạy
     thật 1 HĐ saigoncoop để kiểm chứng.
-  - [ ] **T29c — Mở rộng + tài liệu**: đánh giá meinvoice/easyinvoice (SPA) &
+  - [x] **T29c — Mở rộng + tài liệu**: đánh giá meinvoice/easyinvoice (SPA) &
     ehoadon/VNPT (captcha — để trình duyệt/tay); ghi rõ cổng nào tự động được.
 
 ## Ghi chú

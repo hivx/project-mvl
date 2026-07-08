@@ -3,10 +3,21 @@
 Adapter tải hóa đơn từ cổng tra cứu của từng nhà phát hành, cho các email
 **chỉ có link + mã** (không đính kèm file).
 
-Thư mục này **cố ý để trống**: mỗi nhà phát hành (Viettel/sinvoice, VNPT,
-MISA/meinvoice, EasyInvoice...) có URL và cách lấy file khác nhau, **chỉ viết
-chính xác được sau khi khảo sát email thật**. Đây là phần duy nhất của tool
-không làm mù được.
+Mỗi nhà phát hành có URL và cách lấy file khác nhau, **chỉ viết chính xác được
+sau khi khảo sát email thật**. Đây là phần fragile nhất của tool.
+
+## Tình trạng cổng (khảo sát thật 2026-07-08)
+
+| Cổng | Cơ chế | Tự động (HTTP)? |
+|------|--------|-----------------|
+| **`*.einvoice.com.vn`** (saigoncoop…) | GET trang → CSRF token + `idHoaDon` → POST `/tai-ve-hoa-don` → ZIP (XML+PDF) | ✅ **`einvoice_com_vn.py`** (đã đăng ký) |
+| meinvoice.vn (MISA) | SPA, tải qua XHR API `api.meinvoice.vn` | ⏳ cần dò XHR (chưa làm) |
+| easyinvoice.com.vn (Thái Sơn) | SPA, endpoint `/Invoice/ConvertInv` | ⏳ cần dò XHR (chưa làm) |
+| ehoadon.vn, vnpt-invoice.com.vn | **ReCaptcha** | ❌ cần trình duyệt + nhập captcha tay |
+
+**Lưu ý**: file tải từ cổng là **XML thật** → chạy pipeline như HĐ có XML (cột
+`Nguồn` = `XML`, tin cậy như email đính kèm). Cổng có thể chậm/timeout/token hết
+hạn → adapter trả `[]` và HĐ rơi vào "cần tải tay" (không làm sập batch).
 
 ## Hợp đồng dự kiến (khi thêm adapter đầu tiên)
 

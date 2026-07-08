@@ -33,7 +33,7 @@ src/hdtool/
   mailscan.py    # IMAP readonly: quét + fetch (helper thuần tách riêng để test)
   classify.py    # chấm điểm email -> certain/suspect/ignore
   collect.py     # trích attachment (giải nén zip), dò link, lưu cây thư mục
-  adapters/      # registry adapter portal theo nhà phát hành — hiện để trống
+  adapters/      # adapter tải HĐ chỉ-link từ cổng; einvoice.com.vn đã chạy (HTTP)
   aggregate.py   # khử trùng, thay thế, lọc mua-vào, gom thuế suất; only_company
   reports.py     # xuất danh sách ứng viên/nghi ngờ (CSV)
   excel.py       # xuất .xlsx 4 sheet giống file mẫu (chi tiết SP/BK TT80/DS HĐ/DS SP)
@@ -90,7 +90,9 @@ chính + `-tong-hop.csv` + `-bo-qua.csv`.
 - Hộp thư hóa đơn thật là **`anh.doan@medcons.vn`** (khai `IMAP_USER_2`), chứa hóa
   đơn của CẢ hai công ty. `info@miyano.com.vn` gần như không có hóa đơn XML.
 - **Adapter portal chỉ viết được sau khi khảo sát email thật** của từng nhà phát
-  hành — đây là phần duy nhất không làm mù được (VNPT/Viettel/easyinvoice chỉ-link).
+  hành. Đã có **`einvoice.com.vn`** (saigoncoop… — tải HTTP tự động, không captcha);
+  meinvoice/easyinvoice là SPA (cần dò XHR), ehoadon/VNPT có captcha (cần trình
+  duyệt/tay). Xem `src/hdtool/adapters/README.md`.
 - Ghi chú dữ liệu: bản Anh Doan **forward** thường có XML hỏng 37 byte → rơi vào
   `_chua-ro-cong-ty`, nhưng bản gốc parse được nên KHÔNG mất hóa đơn (đã kiểm chứng
   118=118 sau migrate).
