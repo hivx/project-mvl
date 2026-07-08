@@ -358,8 +358,13 @@ _COMMANDS = {"scan": cmd_scan, "collect": cmd_collect, "report": cmd_report,
 
 
 def main(argv: Optional[list] = None) -> int:
-    args = build_parser().parse_args(argv)
+    argv = sys.argv[1:] if argv is None else argv
     settings = _load_settings()
+    if not argv:
+        # No subcommand -> friendly interactive menu (the packaged entry point).
+        from .interactive import run_interactive
+        return run_interactive(settings)
+    args = build_parser().parse_args(argv)
     args.from_date, args.to_date = resolve_period(args.from_date, args.to_date, settings)
     return _COMMANDS[args.command](settings, args)
 

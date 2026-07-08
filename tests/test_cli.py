@@ -139,3 +139,13 @@ def test_resolve_period_falls_back_to_config():
 def test_resolve_period_errors_when_missing():
     with pytest.raises(SystemExit):
         resolve_period(None, None, _settings())
+
+
+def test_main_no_args_launches_interactive(monkeypatch):
+    import hdtool.interactive as interactive
+    calls = {}
+    monkeypatch.setattr(interactive, "run_interactive",
+                        lambda settings, **kw: calls.update(ran=True) or 0)
+    monkeypatch.setattr(cli, "_load_settings", lambda: _settings("2026-06-01", "2026-06-30"))
+    rc = cli.main([])
+    assert rc == 0 and calls.get("ran") is True
