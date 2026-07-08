@@ -11,8 +11,8 @@ sau khi khảo sát email thật**. Đây là phần fragile nhất của tool.
 | Cổng | Cơ chế | Tự động (HTTP)? |
 |------|--------|-----------------|
 | **`*.einvoice.com.vn`** (saigoncoop…) | GET trang → CSRF token + `idHoaDon` → POST `/tai-ve-hoa-don` → ZIP (XML+PDF) | ✅ **`einvoice_com_vn.py`** (đã đăng ký) |
-| meinvoice.vn (MISA) | SPA, tải qua XHR API `api.meinvoice.vn` | ⏳ cần dò XHR (chưa làm) |
-| easyinvoice.com.vn (Thái Sơn) | SPA, endpoint `/Invoice/ConvertInv` | ⏳ cần dò XHR (chưa làm) |
+| meinvoice.vn (MISA) | SPA; JS đóng gói CDN mã hóa (`meinvoice.misacdn.net/…WebResource.axd`), `ApiUrl=app.meinvoice.vn`, hàm `downloadInvoice` dựng endpoint lúc chạy | ⏳ **cần xem XHR bằng trình duyệt** (DevTools) — HTTP thuần không dò ra |
+| easyinvoice.com.vn (Thái Sơn) | SPA, endpoint `/Invoice/ConvertInv` dựng bằng JS | ⏳ **cần xem XHR bằng trình duyệt** |
 | ehoadon.vn, vnpt-invoice.com.vn | **ReCaptcha** | ❌ cần trình duyệt + nhập captcha tay |
 
 **Lưu ý**: file tải từ cổng là **XML thật** → chạy pipeline như HĐ có XML (cột
