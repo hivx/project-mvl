@@ -29,6 +29,7 @@ src/hdtool/
   models.py      # dataclass Invoice, TaxLine, EmailCandidate
   xmlutil.py     # tìm phần tử theo local-name, bỏ qua namespace
   parse_xml.py   # XML chuẩn TCT -> Invoice
+  pdf_extract.py # bóc HĐ chỉ-PDF (pdftotext, layout Thái Sơn) -> Invoice(nguon=PDF)
   mailscan.py    # IMAP readonly: quét + fetch (helper thuần tách riêng để test)
   classify.py    # chấm điểm email -> certain/suspect/ignore
   collect.py     # trích attachment (giải nén zip), dò link, lưu cây thư mục

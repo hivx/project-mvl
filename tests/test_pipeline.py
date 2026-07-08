@@ -135,6 +135,56 @@ def test_write_report_csv_creates_csv_and_siblings(tmp_path):
     assert out.with_name("bk-bo-qua.csv").exists()
 
 
+def test_pdf_only_invoice_recovered_and_flagged(tmp_path, monkeypatch):
+    from decimal import Decimal
+    from hdtool.models import Invoice, TaxLine
+    import hdtool.pipeline as pipeline
+    data = _tree(tmp_path, "inv_10pct.xml")           # one XML invoice
+    pdfdir = data / "2026-06" / "pdfonly"; pdfdir.mkdir()
+    (pdfdir / "orphan.pdf").write_bytes(b"%PDF only")  # PDF-only, own folder
+
+    def fake_extract(path):
+        if str(path).endswith("orphan.pdf"):
+            return Invoice("888", "1", "C26MXX", date(2026, 6, 10), "0400000000",
+                           "Bán PDF", MIYANO, "Mua", "VND", Decimal("500000"),
+                           Decimal("40000"), Decimal("540000"),
+                           tax_lines=[TaxLine("8%", Decimal("500000"), Decimal("40000"))],
+                           nguon="PDF")
+        return None
+    monkeypatch.setattr(pipeline, "extract_pdf_invoice", fake_extract)
+
+    result, skipped, manual = build_report(data, date(2026, 6, 1), date(2026, 6, 30),
+                                           buyer_msts={MIYANO})
+    by_so = {inv.so_hd: inv for inv in result.invoices}
+    assert "888" in by_so and by_so["888"].nguon == "PDF"   # merged, flagged
+    assert "123" in by_so and by_so["123"].nguon == "XML"   # XML unchanged
+    assert not any("orphan.pdf" in m for m in manual)        # no longer "cần nhập tay"
+
+
+def test_pdf_duplicate_of_xml_is_dropped_not_merged(tmp_path, monkeypatch):
+    from decimal import Decimal
+    from hdtool.models import Invoice, TaxLine
+    import hdtool.pipeline as pipeline
+    data = _tree(tmp_path, "inv_10pct.xml")           # XML invoice 123 / C22TAA
+    pdfdir = data / "2026-06" / "pdfonly"; pdfdir.mkdir()
+    (pdfdir / "dup.pdf").write_bytes(b"%PDF dup")
+
+    def fake_extract(path):
+        # a PDF representation of the SAME invoice already present as XML
+        return Invoice("123", "1", "C22TAA", date(2026, 6, 15), "0312345678",
+                       "Bán", MIYANO, "Mua", "VND", Decimal("1000000"),
+                       Decimal("100000"), Decimal("1100000"),
+                       tax_lines=[TaxLine("10%", Decimal("1000000"), Decimal("100000"))],
+                       nguon="PDF")
+    monkeypatch.setattr(pipeline, "extract_pdf_invoice", fake_extract)
+
+    result, skipped, manual = build_report(data, date(2026, 6, 1), date(2026, 6, 30),
+                                           buyer_msts={MIYANO})
+    # invoice 123 present exactly once, and from the trusted XML (not PDF)
+    matches = [inv for inv in result.invoices if inv.so_hd == "123"]
+    assert len(matches) == 1 and matches[0].nguon == "XML"
+
+
 def test_find_manual_entry_pdfs_flags_orphan_pdf(tmp_path):
     data = _tree(tmp_path, "inv_10pct.xml")
     dest = data / "2026-06" / "abc"

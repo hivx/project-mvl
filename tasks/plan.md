@@ -86,7 +86,7 @@ thêm cột **Nguồn** (XML/PDF/Cổng).
 
 - [x] **T27 — Cột "Nguồn"**: `Invoice.nguon` (mặc định "XML"); thêm cột Nguồn ở
   CUỐI các sheet + CSV (giữ nguyên cột giống mẫu). Aggregate giữ nguon. TDD.
-- [ ] **T28 — Bóc PDF**: `pdf_extract.py` — `pdftotext` + `parse_pdf_text` (thuần,
+- [x] **T28 — Bóc PDF**: `pdf_extract.py` — `pdftotext` + `parse_pdf_text` (thuần,
   test trên text mẫu Golden Gate) → `Invoice(nguon="PDF")` cho HĐ chỉ-PDF; gộp vào
   pipeline (gắn cờ). Xử lý HĐ Golden Gate + PDF medcons.
 - [ ] **T29 — (LÀM CHUNG, cần Chrome + captcha) Tải HĐ chỉ-link qua trình duyệt**:

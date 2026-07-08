@@ -13,6 +13,7 @@ from .aggregate import AggregateResult, aggregate
 from .excel import write_workbook
 from .models import Invoice
 from .parse_xml import InvoiceParseError, NotAnInvoiceError, parse_invoice_xml
+from .pdf_extract import extract_pdf_invoice
 
 
 def find_xml_files(root) -> list[Path]:
@@ -99,6 +100,22 @@ def build_report(
     # miyano report doesn't list medcons/_chua-ro PDFs (folders are data/<công ty>/).
     manual_root = Path(data_dir) / only_company if only_company else data_dir
     manual_entry = find_manual_entry_pdfs(manual_root, invoices)
+    # Recover PDF-only invoices via text extraction (flagged nguon=PDF for
+    # reconciliation). A PDF whose invoice we already have as XML is a redundant
+    # bản thể hiện — drop it (never let PDF shadow the trusted XML). Unreadable
+    # ones stay in manual_entry ("cần nhập tay").
+    seen_keys = {inv.dedup_key for inv in invoices}
+    recovered, still_manual = [], []
+    for p in manual_entry:
+        inv = extract_pdf_invoice(p)
+        if inv is None or inv.ngay_lap is None:
+            still_manual.append(p)
+        elif inv.dedup_key not in seen_keys:
+            recovered.append(inv)
+            seen_keys.add(inv.dedup_key)
+        # else: already covered by XML (or another PDF) -> silently skip
+    invoices = invoices + recovered
+    manual_entry = still_manual
     parsed_names = {Path(inv.xml_path).name for inv in invoices if inv.xml_path}
 
     skipped: list[tuple[str, str, str]] = []
