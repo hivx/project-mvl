@@ -48,6 +48,19 @@ Spec: `docs/superpowers/specs/2026-07-08-company-report-selection-and-interactiv
   được); `run.py` thành launcher; `hdtool` không kèm lệnh → mở menu.
 - [x] **T19 — Tài liệu**: cập nhật `CLAUDE.md`, `settings.yaml`, `plan.md`; full test.
 
+## Đợt 3 — Tinh chỉnh sau lần chạy thật (2026-07-08)
+
+Phát hiện khi chạy thật cả 2 hộp thư (263 file tải về, 109 HĐ miyano):
+
+- [ ] **T20 — Lọc "Cần nhập tay" theo công ty được chọn**: khi `only_company`
+  đặt, `build_report` chỉ quét PDF-only trong `data/<công ty>/` (không gộp PDF của
+  medcons/_chua-ro vào báo cáo miyano). Thuần offline, test bằng fixtures.
+- [ ] **T21 — Ghi danh sách "cần tải tay" (HĐ chỉ-link) ra CSV**: `collect` xuất
+  `data/can-tai-tay-<from>_<to>.csv` (hộp thư, người gửi, tiêu đề, nhà phát hành,
+  link tra cứu) để tải tay. Helper thuần `write_manual_links_csv` test được.
+- [ ] **T22 — (HOÃN, cần bạn duyệt riêng) Adapter cổng thật** (meinvoice/
+  easyinvoice) tải HĐ chỉ-link — có gọi HTTP ra ngoài, rủi ro cao hơn.
+
 ## Ghi chú
 
 - T11 là phần fragile duy nhất, không làm mù được — chờ email thật.
