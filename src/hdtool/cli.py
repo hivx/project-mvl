@@ -73,6 +73,8 @@ def build_parser() -> argparse.ArgumentParser:
     sp_report.add_argument("--source", default=None, help="Thư mục chứa XML (mặc định data/)")
     sp_report.add_argument("--company", default=None,
                            help="Chỉ tổng hợp 1 công ty nhận (vd: miyano, medcons)")
+    sp_report.add_argument("--format", choices=["xlsx", "csv"], default="xlsx",
+                           help="Định dạng xuất (mặc định xlsx)")
 
     sp_run = sub.add_parser("run", help="Chạy cả chuỗi scan → collect → report")
     add_period(sp_run)

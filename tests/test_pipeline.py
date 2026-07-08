@@ -93,6 +93,17 @@ def test_build_report_only_company_flags_other_company(tmp_path):
                for ident, grp, _r in skipped)
 
 
+def test_write_report_csv_creates_csv_and_siblings(tmp_path):
+    data = _tree(tmp_path, "inv_10pct.xml")
+    result, skipped, manual = build_report(data, date(2026, 6, 1), date(2026, 6, 30),
+                                            buyer_msts={MIYANO})
+    out = tmp_path / "bk.csv"
+    write_report(result, out, "csv", skipped=skipped, manual_entry=manual)
+    assert out.exists()
+    assert out.with_name("bk-tong-hop.csv").exists()
+    assert out.with_name("bk-bo-qua.csv").exists()
+
+
 def test_find_manual_entry_pdfs_flags_orphan_pdf(tmp_path):
     data = _tree(tmp_path, "inv_10pct.xml")
     dest = data / "2026-06" / "abc"

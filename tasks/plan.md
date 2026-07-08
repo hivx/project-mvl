@@ -42,7 +42,7 @@ Spec: `docs/superpowers/specs/2026-07-08-company-report-selection-and-interactiv
   đơn công ty khác → `excluded` nhóm `cong_ty_khac` (không phải `sai_ben_mua`).
 - [x] **T16 — Thread `only_company` qua pipeline + cờ `--company`**: tách
   `build_report` (không ghi, trả result/skipped/manual) và cập nhật `cmd_report`.
-- [ ] **T17 — Xuất CSV**: `csv_report.py` (bảng kê + tong-hop + bo-qua, UTF-8 BOM)
+- [x] **T17 — Xuất CSV**: `csv_report.py` (bảng kê + tong-hop + bo-qua, UTF-8 BOM)
   + `write_report(fmt)` dispatch + cờ `--format {xlsx,csv}`; nhãn `cong_ty_khac`.
 - [ ] **T18 — Menu tương tác**: `interactive.py` (`run_interactive`, input tiêm
   được); `run.py` thành launcher; `hdtool` không kèm lệnh → mở menu.

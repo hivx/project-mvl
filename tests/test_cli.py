@@ -42,6 +42,16 @@ def test_parser_report_company_defaults_none():
     assert args.company is None
 
 
+def test_parser_report_format_flag():
+    args = build_parser().parse_args(["report", "--format", "csv"])
+    assert args.format == "csv"
+
+
+def test_parser_report_format_default_xlsx():
+    args = build_parser().parse_args(["report"])
+    assert args.format == "xlsx"
+
+
 def test_parser_scan():
     args = build_parser().parse_args(["scan", "--from", "2026-06-01", "--to", "2026-06-30"])
     assert args.command == "scan"
