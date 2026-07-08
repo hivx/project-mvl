@@ -152,6 +152,7 @@ GROUP_LABELS = {
     "ngoai_ky": "Ngoài kỳ",
     "khong_ngay_lap": "Không có ngày lập",
     "sai_ben_mua": "Sai bên mua (CC nhầm)",
+    "cong_ty_khac": "Công ty khác (không thuộc báo cáo này)",
     "trung_forward": "Trùng forward (vô hại)",
     "khong_phai_hoa_don": "Không phải hóa đơn (vd thông báo thuế)",
     "khong_doc_duoc": "KHÔNG đọc được — cần lấy tay",

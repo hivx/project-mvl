@@ -40,7 +40,7 @@ Spec: `docs/superpowers/specs/2026-07-08-company-report-selection-and-interactiv
 - [ ] **T14 — Khôi phục `excel.py`** (đang bị xóa → import gãy). Full test xanh lại.
 - [ ] **T15 — Lọc tổng hợp theo 1 công ty**: `aggregate(only_company=...)`; hóa
   đơn công ty khác → `excluded` nhóm `cong_ty_khac` (không phải `sai_ben_mua`).
-- [ ] **T16 — Thread `only_company` qua pipeline + cờ `--company`**: tách
+- [x] **T16 — Thread `only_company` qua pipeline + cờ `--company`**: tách
   `build_report` (không ghi, trả result/skipped/manual) và cập nhật `cmd_report`.
 - [ ] **T17 — Xuất CSV**: `csv_report.py` (bảng kê + tong-hop + bo-qua, UTF-8 BOM)
   + `write_report(fmt)` dispatch + cờ `--format {xlsx,csv}`; nhãn `cong_ty_khac`.

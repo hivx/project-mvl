@@ -32,6 +32,16 @@ def test_parser_report_with_output():
     assert args.output == "out.xlsx"
 
 
+def test_parser_report_company_flag():
+    args = build_parser().parse_args(["report", "--company", "miyano"])
+    assert args.company == "miyano"
+
+
+def test_parser_report_company_defaults_none():
+    args = build_parser().parse_args(["report"])
+    assert args.company is None
+
+
 def test_parser_scan():
     args = build_parser().parse_args(["scan", "--from", "2026-06-01", "--to", "2026-06-30"])
     assert args.command == "scan"

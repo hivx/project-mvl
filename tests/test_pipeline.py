@@ -6,7 +6,7 @@ from pathlib import Path
 import openpyxl
 
 from hdtool.pipeline import (
-    find_xml_files, load_invoices, filter_by_period, build_report,
+    find_xml_files, load_invoices, filter_by_period, build_report, write_report,
     find_manual_entry_pdfs,
 )
 
@@ -69,12 +69,28 @@ def test_build_report_end_to_end(tmp_path):
     data = _tree(tmp_path, "inv_10pct.xml", "inv_other_buyer.xml")
     out = tmp_path / "bangke.xlsx"
     result, skipped, manual = build_report(data, date(2026, 6, 1), date(2026, 6, 30),
-                                            buyer_msts={MIYANO}, out_path=out)
+                                            buyer_msts={MIYANO})
+    # build_report no longer writes; writing is a separate step
+    assert not out.exists()
+    write_report(result, out, "xlsx", skipped=skipped, manual_entry=manual)
     assert out.exists()
     # only the Miyano-buyer invoice survives the buyer filter
     assert {inv.so_hd for inv in result.invoices} == {"123"}
     wb = openpyxl.load_workbook(out)
     assert "Bảng kê" in wb.sheetnames
+
+
+def test_build_report_only_company_flags_other_company(tmp_path):
+    data = _tree(tmp_path, "inv_10pct.xml", "inv_other_buyer.xml")
+    companies = {"0301234567": "miyano", "0400000000": "medcons"}
+    result, skipped, manual = build_report(
+        data, date(2026, 6, 1), date(2026, 6, 30),
+        buyer_msts=set(companies), companies=companies, only_company="medcons")
+    # report holds only the selected company's buyer invoice
+    assert {inv.so_hd for inv in result.invoices} == {"77"}
+    # the other valid buyer (miyano) is grouped as cong_ty_khac, NOT sai_ben_mua
+    assert any(grp == "cong_ty_khac" and ident.endswith("inv_10pct.xml")
+               for ident, grp, _r in skipped)
 
 
 def test_find_manual_entry_pdfs_flags_orphan_pdf(tmp_path):
@@ -96,7 +112,8 @@ def test_build_report_separates_duplicate_forward_from_real_gap(tmp_path):
     (data / "2026-06" / "abc" / "orphan_bad.xml").write_bytes(b"garbage-not-xml")  # gap
     out = tmp_path / "r.xlsx"
     result, skipped, manual = build_report(data, date(2026, 6, 1), date(2026, 6, 30),
-                                           buyer_msts={MIYANO}, out_path=out)
+                                           buyer_msts={MIYANO})
+    write_report(result, out, "xlsx", skipped=skipped, manual_entry=manual)
     groups = {Path(ident).name: grp for ident, grp, _reason in skipped}
     assert groups["inv_10pct.xml"] == "trung_forward"   # same-named good original exists
     assert groups["orphan_bad.xml"] == "khong_doc_duoc"  # no original -> real gap
@@ -116,7 +133,8 @@ def test_non_invoice_xml_not_flagged_as_gap(tmp_path):
         b"<?xml version='1.0' encoding='UTF-8'?><TBao><ND>x</ND></TBao>")
     out = tmp_path / "r.xlsx"
     result, skipped, manual = build_report(data, date(2026, 6, 1), date(2026, 6, 30),
-                                           buyer_msts={MIYANO}, out_path=out)
+                                           buyer_msts={MIYANO})
+    write_report(result, out, "xlsx", skipped=skipped, manual_entry=manual)
     groups = {Path(ident).name: grp for ident, grp, _r in skipped}
     assert groups["Thong bao thue.xml"] == "khong_phai_hoa_don"
     wb = openpyxl.load_workbook(out)
@@ -132,7 +150,8 @@ def test_build_report_writes_manual_entry_sheet(tmp_path):
     (dest / "scan_only.pdf").write_bytes(b"%PDF orphan")
     out = tmp_path / "r.xlsx"
     result, skipped, manual = build_report(data, date(2026, 6, 1), date(2026, 6, 30),
-                                           buyer_msts={MIYANO}, out_path=out)
+                                           buyer_msts={MIYANO})
+    write_report(result, out, "xlsx", skipped=skipped, manual_entry=manual)
     assert any("scan_only.pdf" in m for m in manual)
     assert all("inv_10pct.pdf" not in m for m in manual)
     wb = openpyxl.load_workbook(out)

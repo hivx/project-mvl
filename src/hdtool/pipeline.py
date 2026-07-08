@@ -78,15 +78,20 @@ def find_manual_entry_pdfs(data_dir, invoices: list[Invoice]) -> list[str]:
 
 
 def build_report(
-    data_dir, from_date: date, to_date: date, buyer_msts: set[str], out_path,
-    companies: Optional[dict] = None,
+    data_dir, from_date: date, to_date: date, buyer_msts: set[str],
+    companies: Optional[dict] = None, only_company: Optional[str] = None,
 ) -> tuple[AggregateResult, list[tuple[str, str, str]], list[str]]:
-    """Full report stage.
+    """Aggregate collected XML into a report — WITHOUT writing any file.
 
     Returns (aggregate result, skipped[(ident, group, reason)], manual-entry PDFs).
+    Call ``write_report`` to render the result to Excel or CSV.
+
     A parse-failed XML whose filename matches a successfully parsed invoice is a
     harmless forwarded duplicate ("trung_forward"); one with no readable original
-    is a real gap ("khong_doc_duoc") that needs manual retrieval.
+    is a real gap ("khong_doc_duoc") that needs manual retrieval. When
+    ``only_company`` is set, a valid mua-vào invoice belonging to the *other*
+    buyer company is grouped as "cong_ty_khac" (distinct from a genuine
+    wrong-buyer "sai_ben_mua").
     """
     xml_paths = find_xml_files(data_dir)
     invoices, parse_errs = load_invoices(xml_paths)
@@ -113,9 +118,25 @@ def build_report(
             skipped.append((inv.xml_path or inv.so_hd, "ngoai_ky",
                             f"Ngày lập {inv.ngay_lap} ngoài kỳ"))
 
-    result = aggregate(in_period, buyer_msts=buyer_msts, companies=companies)
+    result = aggregate(in_period, buyer_msts=buyer_msts, companies=companies,
+                       only_company=only_company)
     for inv, reason in result.excluded:
-        skipped.append((inv.xml_path or inv.so_hd, "sai_ben_mua", reason))
+        # A valid buyer of the *other* company keeps loai="mua_vao": it is not a
+        # CC-nhầm, just outside this company's report.
+        group = "cong_ty_khac" if inv.loai == "mua_vao" else "sai_ben_mua"
+        skipped.append((inv.xml_path or inv.so_hd, group, reason))
 
-    write_workbook(result, out_path, skipped=skipped, manual_entry=manual_entry)
     return result, skipped, manual_entry
+
+
+def write_report(result: AggregateResult, out_path, fmt: str = "xlsx",
+                 skipped: Optional[list] = None, manual_entry: Optional[list] = None):
+    """Render an aggregated result to ``out_path`` in ``fmt`` ("xlsx" or "csv")."""
+    fmt = (fmt or "xlsx").lower()
+    if fmt in ("csv",):
+        from .csv_report import write_bang_ke_csv
+        return write_bang_ke_csv(result, out_path, skipped=skipped,
+                                 manual_entry=manual_entry)
+    if fmt not in ("xlsx", "excel"):
+        raise ValueError(f"Định dạng không hỗ trợ: {fmt} (chỉ xlsx hoặc csv)")
+    return write_workbook(result, out_path, skipped=skipped, manual_entry=manual_entry)

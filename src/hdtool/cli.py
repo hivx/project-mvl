@@ -13,7 +13,7 @@ from .collect import extract_links, invoice_dir, invoice_files, save_invoice_fil
 from .config import Settings, load_settings
 from .manifest import filter_uncollected, load_manifest, mark_collected, save_manifest
 from .parse_xml import InvoiceParseError, parse_invoice_xml
-from .pipeline import build_report
+from .pipeline import build_report, write_report
 from .reports import write_candidates_csv
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -67,10 +67,12 @@ def build_parser() -> argparse.ArgumentParser:
     sp_collect.add_argument("--include-suspect", action="store_true",
                             help="Tải cả email rổ 'nghi ngờ', không chỉ 'chắc chắn'")
 
-    sp_report = sub.add_parser("report", help="Parse + tổng hợp ra Excel")
+    sp_report = sub.add_parser("report", help="Parse + tổng hợp ra Excel/CSV")
     add_period(sp_report)
-    sp_report.add_argument("-o", "--output", default=None, help="File Excel xuất ra")
+    sp_report.add_argument("-o", "--output", default=None, help="File xuất ra")
     sp_report.add_argument("--source", default=None, help="Thư mục chứa XML (mặc định data/)")
+    sp_report.add_argument("--company", default=None,
+                           help="Chỉ tổng hợp 1 công ty nhận (vd: miyano, medcons)")
 
     sp_run = sub.add_parser("run", help="Chạy cả chuỗi scan → collect → report")
     add_period(sp_run)
@@ -94,9 +96,25 @@ def _load_settings() -> Settings:
     return load_settings(PROJECT_ROOT)
 
 
-def _default_output(from_date: date, to_date: date, settings: Settings) -> Path:
+def _default_output(from_date: date, to_date: date, settings: Settings,
+                    company: Optional[str] = None, fmt: str = "xlsx") -> Path:
     settings.data_dir.mkdir(parents=True, exist_ok=True)
-    return settings.data_dir / f"bang-ke-{from_date}_{to_date}.xlsx"
+    ext = "csv" if fmt == "csv" else "xlsx"
+    comp = f"-{company}" if company else ""
+    return settings.data_dir / f"bang-ke{comp}-{from_date}_{to_date}.{ext}"
+
+
+def _resolve_company(name: Optional[str], settings: Settings) -> Optional[str]:
+    """Validate a --company / menu choice against configured company names."""
+    if not name:
+        return None
+    valid = set(settings.companies.values())
+    if name not in valid:
+        raise SystemExit(
+            f"Công ty '{name}' không có trong cấu hình. "
+            f"Chọn một trong: {', '.join(sorted(valid)) or '(chưa cấu hình companies)'}"
+        )
+    return name
 
 
 def cmd_scan(settings: Settings, args) -> int:
@@ -212,16 +230,24 @@ def _peek_company_date(files, candidate, settings):
 
 def cmd_report(settings: Settings, args) -> int:
     source = Path(args.source) if args.source else settings.data_dir
-    out = Path(args.output) if args.output else _default_output(args.from_date, args.to_date, settings)
+    company = _resolve_company(getattr(args, "company", None), settings)
+    fmt = getattr(args, "format", None) or "xlsx"
+    out = (Path(args.output) if args.output
+           else _default_output(args.from_date, args.to_date, settings, company, fmt))
     if not source.exists():
         print(f"Không tìm thấy thư mục nguồn: {source}. Hãy chạy 'collect' trước.")
         return 1
     result, skipped, manual = build_report(source, args.from_date, args.to_date,
-                                            settings.buyer_msts, out,
-                                            companies=settings.companies)
+                                            settings.buyer_msts,
+                                            companies=settings.companies,
+                                            only_company=company)
+    write_report(result, out, fmt, skipped=skipped, manual_entry=manual)
+
     def _money(x):
         return int(x) if x == x.to_integral_value() else x
 
+    if company:
+        print(f"Công ty: {company}")
     print(f"Đã xuất: {out}")
     print(f"  Hóa đơn trong kỳ: {len(result.invoices)}")
     print(f"  Tổng tiền chưa thuế: {_money(result.total_chua_thue):,}")
