@@ -95,7 +95,10 @@ def build_report(
     """
     xml_paths = find_xml_files(data_dir)
     invoices, parse_errs = load_invoices(xml_paths)
-    manual_entry = find_manual_entry_pdfs(data_dir, invoices)
+    # PDF-only "cần nhập tay" list: scope to the selected company's folder so a
+    # miyano report doesn't list medcons/_chua-ro PDFs (folders are data/<công ty>/).
+    manual_root = Path(data_dir) / only_company if only_company else data_dir
+    manual_entry = find_manual_entry_pdfs(manual_root, invoices)
     parsed_names = {Path(inv.xml_path).name for inv in invoices if inv.xml_path}
 
     skipped: list[tuple[str, str, str]] = []

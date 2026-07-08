@@ -52,7 +52,7 @@ Spec: `docs/superpowers/specs/2026-07-08-company-report-selection-and-interactiv
 
 Phát hiện khi chạy thật cả 2 hộp thư (263 file tải về, 109 HĐ miyano):
 
-- [ ] **T20 — Lọc "Cần nhập tay" theo công ty được chọn**: khi `only_company`
+- [x] **T20 — Lọc "Cần nhập tay" theo công ty được chọn**: khi `only_company`
   đặt, `build_report` chỉ quét PDF-only trong `data/<công ty>/` (không gộp PDF của
   medcons/_chua-ro vào báo cáo miyano). Thuần offline, test bằng fixtures.
 - [ ] **T21 — Ghi danh sách "cần tải tay" (HĐ chỉ-link) ra CSV**: `collect` xuất

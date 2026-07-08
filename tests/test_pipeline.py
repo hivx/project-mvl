@@ -80,6 +80,38 @@ def test_build_report_end_to_end(tmp_path):
     assert "Bảng kê" in wb.sheetnames
 
 
+def test_manual_entry_scoped_to_selected_company(tmp_path):
+    # PDF-only invoices under different company folders; a miyano report must list
+    # only miyano's orphan PDF, not medcons' or _chua-ro's.
+    data = tmp_path / "data"
+    (data / "miyano" / "2026-06" / "s1").mkdir(parents=True)
+    (data / "miyano" / "2026-06" / "s1" / "mine.pdf").write_bytes(b"%PDF miyano")
+    (data / "medcons" / "2026-06" / "s2").mkdir(parents=True)
+    (data / "medcons" / "2026-06" / "s2" / "theirs.pdf").write_bytes(b"%PDF medcons")
+    (data / "_chua-ro-cong-ty" / "2026-06" / "s3").mkdir(parents=True)
+    (data / "_chua-ro-cong-ty" / "2026-06" / "s3" / "unknown.pdf").write_bytes(b"%PDF ?")
+    companies = {"0109529507": "miyano", "0108186705": "medcons"}
+    _r, _s, manual = build_report(data, date(2026, 6, 1), date(2026, 6, 30),
+                                  buyer_msts=set(companies), companies=companies,
+                                  only_company="miyano")
+    names = {Path(m).name for m in manual}
+    assert "mine.pdf" in names
+    assert "theirs.pdf" not in names
+    assert "unknown.pdf" not in names
+
+
+def test_manual_entry_whole_tree_when_no_company(tmp_path):
+    data = tmp_path / "data"
+    (data / "miyano" / "2026-06" / "s1").mkdir(parents=True)
+    (data / "miyano" / "2026-06" / "s1" / "mine.pdf").write_bytes(b"%PDF a")
+    (data / "medcons" / "2026-06" / "s2").mkdir(parents=True)
+    (data / "medcons" / "2026-06" / "s2" / "theirs.pdf").write_bytes(b"%PDF b")
+    _r, _s, manual = build_report(data, date(2026, 6, 1), date(2026, 6, 30),
+                                  buyer_msts={"0109529507"})
+    names = {Path(m).name for m in manual}
+    assert {"mine.pdf", "theirs.pdf"} <= names   # no company selected -> whole tree
+
+
 def test_build_report_only_company_flags_other_company(tmp_path):
     data = _tree(tmp_path, "inv_10pct.xml", "inv_other_buyer.xml")
     companies = {"0301234567": "miyano", "0400000000": "medcons"}
