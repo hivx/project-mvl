@@ -77,6 +77,22 @@ Mẫu: `docs/MVL 6.26_tai-hoa-don_muaVao_...xlsx` (4 sheet, cấp dòng SP).
 - [x] **T26 — Tài liệu + chạy thật**: cập nhật CLAUDE.md; xuất lại bảng kê miyano
   kỳ 06/2026, đối chiếu với file mẫu.
 
+## Đợt 5 — HĐ chỉ-PDF (bóc text) + HĐ chỉ-link (tải cổng), cột Nguồn
+
+Spike cổng (2026-07-08): token-portal (easyinvoice/saigoncoop/meinvoice/fast)
+**không captcha** nhưng nút tải XML chạy JS; ehoadon/VNPT **có ReCaptcha**.
+pdftotext có sẵn; HĐĐT PDF có lớp text (bóc trực tiếp). Quyết định: gộp chung,
+thêm cột **Nguồn** (XML/PDF/Cổng).
+
+- [ ] **T27 — Cột "Nguồn"**: `Invoice.nguon` (mặc định "XML"); thêm cột Nguồn ở
+  CUỐI các sheet + CSV (giữ nguyên cột giống mẫu). Aggregate giữ nguon. TDD.
+- [ ] **T28 — Bóc PDF**: `pdf_extract.py` — `pdftotext` + `parse_pdf_text` (thuần,
+  test trên text mẫu Golden Gate) → `Invoice(nguon="PDF")` cho HĐ chỉ-PDF; gộp vào
+  pipeline (gắn cờ). Xử lý HĐ Golden Gate + PDF medcons.
+- [ ] **T29 — (LÀM CHUNG, cần Chrome + captcha) Tải HĐ chỉ-link qua trình duyệt**:
+  Claude in Chrome mở trang tra cứu bằng token/mã → tải XML về `data/`; cổng
+  captcha bạn nhập tay. Cân nhắc HTTP adapter cho cổng token (dò endpoint) sau.
+
 ## Ghi chú
 
 - T11 là phần fragile duy nhất, không làm mù được — chờ email thật.
