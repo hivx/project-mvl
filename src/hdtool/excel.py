@@ -44,12 +44,13 @@ DETAIL_SP_HEADERS = [
     "ĐƠN VỊ TIỀN TỆ", "TỶ GIÁ", "TRẠNG THÁI HÓA ĐƠN", "KẾT QUẢ KIỂM TRA HÓA ĐƠN",
     "HÓA ĐƠN LIÊN QUAN", "TÍNH CHẤT", "MÃ HÀNG", "TÊN HÀNG HÓA, DỊCH VỤ",
     "ĐƠN VỊ TÍNH", "SỐ LƯỢNG", "ĐƠN GIÁ", "THUẾ SUẤT", "THÀNH TIỀN", "TIỀN THUẾ",
+    "Nguồn",
 ]
 BK_TT80_HEADERS = [
     "STT", "Mẫu số", "Ký hiệu", "Số", "Ngày, tháng, năm", "Tên người bán",
     "Mã số thuế người bán", "Tên hàng hóa, dịch vụ", "Đơn vị tính", "Số lượng",
     "Đơn giá", "Giá trị HHDV mua vào chưa có thuế GTGT", "Thuế suất (%)",
-    "Tiền thuế GTGT", "Ghi chú",
+    "Tiền thuế GTGT", "Ghi chú", "Nguồn",
 ]
 DS_HOADON_HEADERS = [
     "LOẠI HÓA ĐƠN", "STT", "MẪU SỐ", "KÝ HIỆU", "SỐ", "NGÀY LẬP", "NGÀY KÝ",
@@ -57,7 +58,7 @@ DS_HOADON_HEADERS = [
     "TÊN NGƯỜI MUA", "ĐỊA CHỈ NGƯỜI MUA", "TỔNG TIỀN CHƯA THUẾ", "TỔNG TIỀN THUẾ",
     "TỔNG CKTM", "TỔNG PHÍ", "TỔNG THANH TOÁN", "TIỀN TỆ", "TỶ GIÁ", "TRẠNG THÁI",
     "KQ KIỂM TRA", "Hình thức thanh toán", "Link tra cứu", "Mã tra cứu", "Có XML",
-    "Hóa đơn liên quan",
+    "Hóa đơn liên quan", "Nguồn",
 ]
 DS_SANPHAM_HEADERS = [
     "STT", "MẪU SỐ", "KÝ HIỆU HÓA ĐƠN", "SỐ HÓA ĐƠN", "NGÀY LẬP", "MST NGƯỜI BÁN",
@@ -65,7 +66,7 @@ DS_SANPHAM_HEADERS = [
     "ĐỊA CHỈ NGƯỜI MUA", "ĐƠN VỊ TIỀN TỆ", "TỶ GIÁ", "TRẠNG THÁI HÓA ĐƠN",
     "KẾT QUẢ KIỂM TRA HÓA ĐƠN", "TÍNH CHẤT", "MÃ HÀNG", "LOẠI HÀNG HÓA ĐẶC TRƯNG",
     "TÊN HÀNG HÓA, DỊCH VỤ", "ĐƠN VỊ TÍNH", "SỐ LƯỢNG", "ĐƠN GIÁ", "THUẾ SUẤT",
-    "THÀNH TIỀN", "TIỀN THUẾ", "THÔNG TIN KHÁC",
+    "THÀNH TIỀN", "TIỀN THUẾ", "THÔNG TIN KHÁC", "Nguồn",
 ]
 
 GROUP_LABELS = {
@@ -175,7 +176,7 @@ def bk_tt80_rows(result) -> list[list]:
                 stt, inv.ky_hieu_mau_so, inv.ky_hieu, inv.so_hd, inv.ngay_lap,
                 inv.ten_ban, inv.mst_ban, ln.ten_hang, ln.dvt, _num(ln.so_luong),
                 _num(ln.don_gia), _num(ln.thanh_tien), ln.thue_suat,
-                _num(ln.tien_thue), "",
+                _num(ln.tien_thue), "", inv.nguon,
             ])
             stt += 1
     return rows
@@ -258,6 +259,7 @@ def _write_detail_sp(ws, result, period: str):
                 _put(ws, r, 18, _num(inv.ty_gia))
                 _put(ws, r, 19, _status_text(inv))
                 _put(ws, r, 21, inv.hd_bi_thay_the or None)
+                _put(ws, r, 31, inv.nguon)
             _put(ws, r, 22, _tinh_chat_label(ln.tinh_chat))
             _put(ws, r, 23, ln.ma_hang or None)
             _put(ws, r, 24, ln.ten_hang or None)
@@ -309,8 +311,9 @@ def _write_ds_hoadon(ws, result, period: str):
         _put(ws, r, 21, _status_text(inv))
         _put(ws, r, 23, inv.hinh_thuc_tt or None)
         _put(ws, r, 25, inv.ma_tra_cuu or None)
-        _put(ws, r, 26, "x")               # Có XML (report chỉ gồm HĐ đọc từ XML)
+        _put(ws, r, 26, "x" if inv.nguon == "XML" else "")   # Có XML
         _put(ws, r, 27, inv.hd_bi_thay_the or None)
+        _put(ws, r, 28, inv.nguon)
         r += 1
     _autosize(ws, DS_HOADON_HEADERS)
 
@@ -343,6 +346,7 @@ def _write_ds_sanpham(ws, result, period: str):
             _put(ws, r, 23, ln.thue_suat or None)
             _put(ws, r, 24, _num(ln.thanh_tien), _MONEY)
             _put(ws, r, 25, _num(ln.tien_thue), _MONEY)
+            _put(ws, r, 27, inv.nguon)
             r += 1
             stt += 1
     _autosize(ws, DS_SANPHAM_HEADERS)

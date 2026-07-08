@@ -145,6 +145,20 @@ def test_ds_sanpham_one_row_per_line(tmp_path):
     assert ws.cell(row=6, column=1).value == 2
 
 
+def test_nguon_column_appended_to_sheets(tmp_path):
+    inv = make_inv("1")
+    inv.nguon = "PDF"
+    res = aggregate([inv], buyer_msts={MIYANO})
+    out = tmp_path / "r.xlsx"
+    write_workbook(res, out, **PERIOD)
+    for name, hr in [("BK mua vao TT80", 4), ("DS hoa don", 3),
+                     ("Hoa don Chi tiet SP", 4), ("DS san pham", 4)]:
+        ws = _sheet(out, name)
+        hdr = [c.value for c in ws[hr]]
+        assert hdr[-1] == "Nguồn"                                  # trailing column
+        assert ws.cell(row=hr + 1, column=len(hdr)).value == "PDF"  # source on data row
+
+
 def test_keeps_skipped_and_manual_sheets(tmp_path):
     res = aggregate([make_inv("1")], buyer_msts={MIYANO})
     out = tmp_path / "r.xlsx"

@@ -84,7 +84,7 @@ Spike cổng (2026-07-08): token-portal (easyinvoice/saigoncoop/meinvoice/fast)
 pdftotext có sẵn; HĐĐT PDF có lớp text (bóc trực tiếp). Quyết định: gộp chung,
 thêm cột **Nguồn** (XML/PDF/Cổng).
 
-- [ ] **T27 — Cột "Nguồn"**: `Invoice.nguon` (mặc định "XML"); thêm cột Nguồn ở
+- [x] **T27 — Cột "Nguồn"**: `Invoice.nguon` (mặc định "XML"); thêm cột Nguồn ở
   CUỐI các sheet + CSV (giữ nguyên cột giống mẫu). Aggregate giữ nguon. TDD.
 - [ ] **T28 — Bóc PDF**: `pdf_extract.py` — `pdftotext` + `parse_pdf_text` (thuần,
   test trên text mẫu Golden Gate) → `Invoice(nguon="PDF")` cho HĐ chỉ-PDF; gộp vào

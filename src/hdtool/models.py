@@ -55,6 +55,7 @@ class Invoice:
     # loai: mua_vao | ban_ra | khong_ro
     loai: str = "khong_ro"
     cong_ty: str = ""          # tên công ty bên mua (miyano/medcons) nếu là mua-vào
+    nguon: str = "XML"         # nguồn số liệu: XML | PDF | Cổng (để đối soát)
     # Trường mở rộng để xuất bảng giống mẫu (đợt 4). Đều có default -> code cũ chạy nguyên.
     dia_chi_ban: str = ""
     dia_chi_mua: str = ""
