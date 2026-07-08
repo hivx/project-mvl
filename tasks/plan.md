@@ -101,7 +101,7 @@ thêm cột **Nguồn** (XML/PDF/Cổng).
     ehoadon/VNPT (captcha — để trình duyệt/tay); ghi rõ cổng nào tự động được.
 - [x] **T29d — Chạy collect thật**: adapter einvoice.com.vn tự tải HĐ saigoncoop
   (244213) về `data/medcons/2025-12/` — XML 242→244. Automation chạy end-to-end.
-- [ ] **T30 — Adapter VNPT (`*-tt78.vnpt-invoice.com.vn`)**: spike thật cho thấy link
+- [x] **T30 — Adapter VNPT (`*-tt78.vnpt-invoice.com.vn`)**: spike thật cho thấy link
   email `invoice/getinvoice?token=` trả **XML thẳng** (không captcha — captcha chỉ ở
   trang tra cứu). Adapter GET link đó → XML. TDD mock HTTP. ~13 HĐ.
 
