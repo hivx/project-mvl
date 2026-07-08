@@ -133,8 +133,12 @@ def build_report(
 
 
 def write_report(result: AggregateResult, out_path, fmt: str = "xlsx",
-                 skipped: Optional[list] = None, manual_entry: Optional[list] = None):
-    """Render an aggregated result to ``out_path`` in ``fmt`` ("xlsx" or "csv")."""
+                 skipped: Optional[list] = None, manual_entry: Optional[list] = None,
+                 from_date: Optional[date] = None, to_date: Optional[date] = None):
+    """Render an aggregated result to ``out_path`` in ``fmt`` ("xlsx" or "csv").
+
+    ``from_date``/``to_date`` fill the "Từ ngày … đến ngày …" title of each sheet.
+    """
     fmt = (fmt or "xlsx").lower()
     if fmt in ("csv",):
         from .csv_report import write_bang_ke_csv
@@ -142,4 +146,5 @@ def write_report(result: AggregateResult, out_path, fmt: str = "xlsx",
                                  manual_entry=manual_entry)
     if fmt not in ("xlsx", "excel"):
         raise ValueError(f"Định dạng không hỗ trợ: {fmt} (chỉ xlsx hoặc csv)")
-    return write_workbook(result, out_path, skipped=skipped, manual_entry=manual_entry)
+    return write_workbook(result, out_path, skipped=skipped, manual_entry=manual_entry,
+                          from_date=from_date, to_date=to_date)

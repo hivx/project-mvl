@@ -1,62 +1,42 @@
-"""Write the aggregated result to CSV (bảng kê hóa đơn đầu vào).
+"""Write the aggregated result to CSV as the 'BK mua vào TT80' declaration.
 
-Excel packs several sheets in one file; CSV can't, so the main bảng kê goes to
-``path`` and two sibling files sit next to it:
-  * ``<base>-tong-hop.csv`` — tổng hợp theo thuế suất (như sheet Tổng hợp).
-  * ``<base>-bo-qua.csv``   — các dòng bỏ qua + PDF cần nhập tay (không mất gì).
-All files use UTF-8 with BOM (``utf-8-sig``) so Excel renders Vietnamese right.
-Columns and group labels are shared with ``excel.py`` to stay in lock-step.
+The main file (`<path>.csv`) holds the same columns as the Excel "BK mua vao
+TT80" sheet — one row per product line. A sibling `<base>-bo-qua.csv` lists the
+skipped rows + PDF-only invoices so nothing is lost. All UTF-8 with BOM
+(`utf-8-sig`) so Excel shows Vietnamese right.
 """
 from __future__ import annotations
 
 import csv
-from decimal import Decimal
+from datetime import date
 from pathlib import Path
 from typing import Optional
 
-from .aggregate import AggregateResult, normalize_rate
-from .excel import BANG_KE_HEADERS, GROUP_LABELS, RATE_ORDER, SUMMARY_HEADERS
-from .models import Invoice
+from .aggregate import AggregateResult
+from .excel import BK_TT80_HEADERS, GROUP_LABELS, bk_tt80_rows
 
 SKIPPED_HEADERS = ["Định danh", "Nhóm", "Lý do"]
 
 
-def _num(d):
-    """Keep VND integers exact; leave non-integral Decimals as-is for the writer."""
-    if isinstance(d, Decimal) and d == d.to_integral_value():
-        return int(d)
-    return d
+def _fmt(v):
+    """Render a cell for CSV: dates as dd/mm/yyyy, everything else as-is."""
+    if isinstance(v, date):
+        return v.strftime("%d/%m/%Y")
+    return v
 
 
-def _rate_display(inv: Invoice) -> str:
-    rates: list[str] = []
-    for line in inv.tax_lines:
-        r = normalize_rate(line.thue_suat)
-        if r not in rates:
-            rates.append(r)
-    return ", ".join(rates)
+def _write_csv(path: Path, header: list, rows: list) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8-sig", newline="") as fh:
+        writer = csv.writer(fh)
+        writer.writerow(header)
+        for r in rows:
+            writer.writerow([_fmt(v) for v in r])
+    return path
 
 
-def _bang_ke_rows(result: AggregateResult) -> list[list]:
-    rows = [[
-        inv.ngay_lap.isoformat() if inv.ngay_lap else "",
-        inv.ky_hieu, inv.so_hd, inv.mst_ban, inv.ten_ban,
-        _num(inv.tien_chua_thue), _rate_display(inv), _num(inv.tien_thue),
-        _num(inv.tong_thanh_toan), inv.loai, inv.cong_ty, inv.trang_thai,
-        inv.xml_path or "", inv.pdf_path or "", inv.source_message_id or "",
-    ] for inv in result.invoices]
-    total = ["TỔNG CỘNG", "", "", "", "", _num(result.total_chua_thue), "",
-             _num(result.total_thue), _num(result.total_thanh_toan),
-             "", "", "", "", "", ""]
-    rows.append(total)
-    return rows
-
-
-def _summary_rows(result: AggregateResult) -> list[list]:
-    ordered = [r for r in RATE_ORDER if r in result.by_rate]
-    ordered += [r for r in result.by_rate if r not in RATE_ORDER]
-    return [[r, _num(result.by_rate[r]["tien_chua_thue"]),
-             _num(result.by_rate[r]["tien_thue"])] for r in ordered]
+def _sibling(path: Path, suffix: str) -> Path:
+    return path.with_name(f"{path.stem}-{suffix}.csv")
 
 
 def _skipped_rows(skipped: list, manual_entry: list) -> list[list]:
@@ -67,27 +47,13 @@ def _skipped_rows(skipped: list, manual_entry: list) -> list[list]:
     return rows
 
 
-def _write_csv(path: Path, header: list, rows: list) -> Path:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8-sig", newline="") as fh:
-        writer = csv.writer(fh)
-        writer.writerow(header)
-        writer.writerows(rows)
-    return path
-
-
-def _sibling(path: Path, suffix: str) -> Path:
-    return path.with_name(f"{path.stem}-{suffix}.csv")
-
-
 def write_bang_ke_csv(result: AggregateResult, path, skipped: Optional[list] = None,
                       manual_entry: Optional[list] = None) -> Path:
-    """Write bảng kê + sibling tong-hop/bo-qua CSVs. Returns the main .csv path."""
+    """Write the TT80 bảng kê to ``path`` + a sibling bo-qua CSV. Returns main path."""
     path = Path(path)
     if path.suffix.lower() != ".csv":
         path = path.with_suffix(".csv")
-    _write_csv(path, BANG_KE_HEADERS, _bang_ke_rows(result))
-    _write_csv(_sibling(path, "tong-hop"), SUMMARY_HEADERS, _summary_rows(result))
+    _write_csv(path, BK_TT80_HEADERS, bk_tt80_rows(result))
     _write_csv(_sibling(path, "bo-qua"), SKIPPED_HEADERS,
                _skipped_rows(skipped or [], manual_entry or []))
     return path

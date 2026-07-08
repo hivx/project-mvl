@@ -132,7 +132,6 @@ def test_write_report_csv_creates_csv_and_siblings(tmp_path):
     out = tmp_path / "bk.csv"
     write_report(result, out, "csv", skipped=skipped, manual_entry=manual)
     assert out.exists()
-    assert out.with_name("bk-tong-hop.csv").exists()
     assert out.with_name("bk-bo-qua.csv").exists()
 
 

@@ -162,6 +162,25 @@ def _display_lines(inv: Invoice) -> list[_Line]:
                   inv.tien_chua_thue, inv.tien_thue)]
 
 
+def bk_tt80_rows(result) -> list[list]:
+    """Rows of the 'BK mua vao TT80' declaration (1 per display line), aligned to
+    BK_TT80_HEADERS. Shared by the Excel writer and the CSV export so both match.
+    Dates stay as date objects; the caller formats them per output type.
+    """
+    rows: list[list] = []
+    stt = 1
+    for inv in result.invoices:
+        for ln in _display_lines(inv):
+            rows.append([
+                stt, inv.ky_hieu_mau_so, inv.ky_hieu, inv.so_hd, inv.ngay_lap,
+                inv.ten_ban, inv.mst_ban, ln.ten_hang, ln.dvt, _num(ln.so_luong),
+                _num(ln.don_gia), _num(ln.thanh_tien), ln.thue_suat,
+                _num(ln.tien_thue), "",
+            ])
+            stt += 1
+    return rows
+
+
 def _period_line(from_date: Optional[date], to_date: Optional[date]) -> str:
     if from_date and to_date:
         return f"Từ ngày {from_date.strftime('%d/%m/%Y')} đến ngày {to_date.strftime('%d/%m/%Y')}"
@@ -255,25 +274,11 @@ def _write_detail_sp(ws, result, period: str):
 def _write_bk_tt80(ws, result, period: str):
     _titled(ws, "BẢNG KÊ HOÁ ĐƠN, CHỨNG TỪ HÀNG HOÁ, DỊCH VỤ MUA VÀO", period,
             BK_TT80_HEADERS, 4)
-    r, stt = 5, 1
-    for inv in result.invoices:
-        for ln in _display_lines(inv):
-            _put(ws, r, 1, stt)
-            _put(ws, r, 2, inv.ky_hieu_mau_so)
-            _put(ws, r, 3, inv.ky_hieu)
-            _put(ws, r, 4, inv.so_hd)
-            _put(ws, r, 5, inv.ngay_lap, _DATE)
-            _put(ws, r, 6, inv.ten_ban)
-            _put(ws, r, 7, inv.mst_ban)
-            _put(ws, r, 8, ln.ten_hang or None)
-            _put(ws, r, 9, ln.dvt or None)
-            _put(ws, r, 10, _num(ln.so_luong))
-            _put(ws, r, 11, _num(ln.don_gia), _MONEY)
-            _put(ws, r, 12, _num(ln.thanh_tien), _MONEY)
-            _put(ws, r, 13, ln.thue_suat or None)
-            _put(ws, r, 14, _num(ln.tien_thue), _MONEY)
-            r += 1
-            stt += 1
+    money_cols = {11, 12, 14}
+    for r, row in enumerate(bk_tt80_rows(result), start=5):
+        for c, v in enumerate(row, 1):
+            fmt = _DATE if c == 5 else (_MONEY if c in money_cols else None)
+            _put(ws, r, c, v if v != "" else None, fmt)
     _autosize(ws, BK_TT80_HEADERS)
 
 

@@ -246,7 +246,8 @@ def cmd_report(settings: Settings, args) -> int:
                                             settings.buyer_msts,
                                             companies=settings.companies,
                                             only_company=company)
-    write_report(result, out, fmt, skipped=skipped, manual_entry=manual)
+    write_report(result, out, fmt, skipped=skipped, manual_entry=manual,
+                 from_date=args.from_date, to_date=args.to_date)
 
     def _money(x):
         return int(x) if x == x.to_integral_value() else x
