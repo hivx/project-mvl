@@ -26,6 +26,10 @@ class ClassifierConfig:
     issuer_domains: list[str] = field(default_factory=list)
     keywords: list[str] = field(default_factory=list)
     whitelist_senders: list[str] = field(default_factory=list)
+    # Senders that never send VAT invoices (e.g. bank payment-receipt notifiers).
+    # A match forces "ignore" UNLESS the mail carries an XML (then keep it, to
+    # never lose a real invoice).
+    exclude_senders: list[str] = field(default_factory=list)
     certain_threshold: int = 5
     suspect_threshold: int = 2
 
@@ -46,6 +50,18 @@ def score_email(
     subject_l = (subject or "").lower()
     score = 0
     reasons: list[str] = []
+
+    # Excluded sender + no XML -> not a VAT invoice (bank receipt, statement…).
+    # XML present overrides: never drop a mail that actually carries invoice data.
+    excluded = any(x.lower() in sender_l for x in cfg.exclude_senders if x)
+    if excluded and not has_xml:
+        return EmailCandidate(
+            message_id=message_id, uid=uid, sender=sender, subject=subject,
+            internal_date=internal_date, score=0,
+            reasons=["Người gửi trong danh sách loại trừ (không phải HĐ GTGT)"],
+            has_xml=has_xml, has_pdf=has_pdf, has_link=has_link,
+            bucket="ignore", account=account,
+        )
 
     whitelisted = any(w.lower() in sender_l for w in cfg.whitelist_senders if w)
     if whitelisted:

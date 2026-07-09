@@ -54,3 +54,9 @@ keywords:
 
 # Người gửi đã biết chắc là hóa đơn -> luôn nhận (điền dần khi xác nhận thực tế)
 whitelist_senders: []
+
+# Người gửi KHÔNG BAO GIỜ gửi HĐ GTGT (biên lai NH, sao kê…) -> loại khỏi ứng viên.
+# Khớp chuỗi con trong địa chỉ người gửi; nếu email lại có XML thì VẪN giữ (để
+# không mất HĐ thật). Ví dụ VCBDigibank chỉ gửi "biên lai chuyển tiền".
+exclude_senders:
+  - vcbdigibank

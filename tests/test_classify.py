@@ -39,6 +39,34 @@ def test_link_only_is_ignored():
     assert c.bucket == "ignore"
 
 
+# --- exclude_senders (T36): bank payment receipts are not VAT invoices --------
+
+EXCL = ClassifierConfig(keywords=["biên lai", "hóa đơn"],
+                        exclude_senders=["vcbdigibank"])
+
+
+def test_excluded_sender_without_xml_is_ignored():
+    """VCBDigibank 'Biên lai chuyển tiền' matches keyword but is a bank receipt."""
+    c = score_email("VCBDigibank@info.vietcombank.com.vn",
+                    "Biên lai chuyển tiền qua tài khoản",
+                    has_xml=False, has_pdf=False, has_link=False, cfg=EXCL)
+    assert c.bucket == "ignore"
+    assert "loại trừ" in " ".join(c.reasons).lower()
+
+
+def test_excluded_sender_with_xml_is_still_kept():
+    """Safety: an excluded sender that DOES attach XML is a real invoice — keep it."""
+    c = score_email("VCBDigibank@info.vietcombank.com.vn", "Hóa đơn phí dịch vụ",
+                    has_xml=True, has_pdf=False, has_link=False, cfg=EXCL)
+    assert c.bucket != "ignore"
+
+
+def test_exclude_does_not_affect_other_senders():
+    c = score_email("hoadon@vnpt.vn", "Hóa đơn tháng 6",
+                    has_xml=True, has_pdf=False, has_link=False, cfg=EXCL)
+    assert c.bucket == "certain"
+
+
 def test_whitelisted_sender_forced_certain():
     c = score_email("ketoan@nhacungcap.vn", "random subject", has_xml=False,
                     has_pdf=False, has_link=False, cfg=CFG)

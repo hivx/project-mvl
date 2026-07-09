@@ -129,9 +129,10 @@ Spec: `docs/superpowers/specs/2026-07-09-ocr-pdf-and-http-link-adapter.md`.
   `plan.md`. Fast đã chứng minh end-to-end qua ĐÚNG luồng `collect` thật
   (extract_links→try_fetch_links→XML+PDF). **Còn lại (cần bạn)**: chạy full
   `hdtool collect` để tải hàng loạt về `data/` (ghi nhiều file, gọi cổng ngoài).
-- [ ] **T36 — (chờ bạn duyệt) Lọc biên lai Vietcombank khỏi ứng viên**: 72 email
-  VCBDigibank "Biên lai chuyển tiền" không phải HĐ GTGT → thêm luật classify để
-  không liệt vào "cần tải tay". Đụng logic phân loại → cần bạn xác nhận cách lọc.
+- [x] **T36 — Lọc biên lai Vietcombank khỏi ứng viên** (bạn duyệt 2026-07-09):
+  thêm `exclude_senders` (config) vào classifier; sender khớp + KHÔNG có XML →
+  `ignore` (XML vẫn override để không mất HĐ thật). `settings.yaml` thêm
+  `vcbdigibank`. Verify thật: ứng viên medcons 389→316, VCBDigibank còn 0. TDD.
 
 ## Ghi chú
 
