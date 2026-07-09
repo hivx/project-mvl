@@ -115,10 +115,16 @@ Spec: `docs/superpowers/specs/2026-07-09-ocr-pdf-and-http-link-adapter.md`.
   text layer trước, thiếu text (<50 ký tự) → OCR, gắn `nguon="PDF-OCR"`. TDD mock.
 - [x] **T32 — Cột Nguồn nhận `PDF-OCR`**: `bk_tt80_rows` (dùng chung Excel+CSV) phát
   `inv.nguon` verbatim → PDF-OCR chảy qua sẵn. Test khóa hành vi trong CSV.
-- [ ] **T33 — Spike Fast e-Invoice + Vietcombank (nhánh B)**: GET token bằng
-  `requests`, ghi lại phản hồi (file? JS? captcha?). Quyết định khả thi/không.
-- [ ] **T34 — Adapter HTTP (nếu T33 khả thi)**: `fast_einvoice.py`/`vietcombank.py`
-  + đăng ký + test mock HTTP + chạy thật 1 HĐ.
+- [x] **T33 — Spike Fast e-Invoice + Vietcombank (nhánh B)** (2026-07-09):
+  * **Fast**: trang `index.aspx?c=` CÓ captcha, NHƯNG email có link ký
+    `index.aspx?type=2&c=&hash=` trả **XML thẳng** (type=1/3 = PDF; c+hash giống
+    nhau, chỉ khác type) — KHÔNG captcha → **khả thi HTTP**.
+  * **Vietcombank (72)**: email `VCBDigibank@info.vietcombank.com.vn` "Biên lai
+    chuyển tiền/thanh toán" = **biên lai NH, KHÔNG phải HĐ GTGT**, không có link →
+    false positive của classifier, KHÔNG dựng adapter (đề xuất lọc → T36, chờ duyệt).
+- [x] **T34 — Adapter Fast e-Invoice**: `fast_einvoice.py` (claim link ký type=&hash=,
+  fetch XML type=2 + PDF type=1, degrade `[]`) + đăng ký registry. TDD mock HTTP;
+  chạy thật HĐ số 736 (PYS, 53.635.000đ) qua đúng luồng `collect`.
 - [ ] **T35 — Tài liệu + chạy thật**: cập nhật `adapters/README.md`, `CLAUDE.md`,
   `plan.md`; chạy lại collect + report, đối chiếu số HĐ "cần tải tay" giảm.
 
