@@ -113,7 +113,7 @@ Spec: `docs/superpowers/specs/2026-07-09-ocr-pdf-and-http-link-adapter.md`.
 - [x] **T31 — OCR fallback (nhánh A)**: `pdf_to_ocr_text` (pdftoppm 300dpi trang 1
   → tesseract -l vie, degrade rỗng khi thiếu binary); `extract_pdf_invoice` bóc
   text layer trước, thiếu text (<50 ký tự) → OCR, gắn `nguon="PDF-OCR"`. TDD mock.
-- [ ] **T32 — Cột Nguồn nhận `PDF-OCR`**: `bk_tt80_rows` (dùng chung Excel+CSV) phát
+- [x] **T32 — Cột Nguồn nhận `PDF-OCR`**: `bk_tt80_rows` (dùng chung Excel+CSV) phát
   `inv.nguon` verbatim → PDF-OCR chảy qua sẵn. Test khóa hành vi trong CSV.
 - [ ] **T33 — Spike Fast e-Invoice + Vietcombank (nhánh B)**: GET token bằng
   `requests`, ghi lại phản hồi (file? JS? captcha?). Quyết định khả thi/không.

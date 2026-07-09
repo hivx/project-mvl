@@ -43,6 +43,19 @@ def test_csv_uses_tt80_header_and_bom(tmp_path):
     assert r1["Ngày, tháng, năm"] == "15/06/2026"          # dd/mm/yyyy
 
 
+def test_csv_nguon_column_carries_pdf_ocr(tmp_path):
+    """An OCR-sourced invoice surfaces nguon='PDF-OCR' in the Nguồn column so the
+    accountant knows to đối soát — not collapsed to 'PDF' nor dropped (T32)."""
+    inv = _inv()
+    inv.nguon = "PDF-OCR"
+    res = aggregate([inv], buyer_msts={MIYANO})
+    out = tmp_path / "bang-ke.csv"
+    write_bang_ke_csv(res, out)
+    rows = _rows(out)
+    nguon_i = BK_TT80_HEADERS.index("Nguồn")
+    assert rows[1][nguon_i] == "PDF-OCR"
+
+
 def test_csv_expands_product_lines_with_negative_discount(tmp_path):
     pls = [
         ProductLine("1", "F", "Cước", "Chuyến", Decimal(1), Decimal("17278"), Decimal("17278"), "8%"),
