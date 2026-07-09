@@ -135,6 +135,20 @@ Spec: `docs/superpowers/specs/2026-07-09-ocr-pdf-and-http-link-adapter.md`.
   `ignore` (XML vẫn override để không mất HĐ thật). `settings.yaml` thêm
   `vcbdigibank`. Verify thật: ứng viên medcons 389→316, VCBDigibank còn 0. TDD.
 
+## Đối chiếu mẫu MVL 6.26 (miyano 06/2026) — 2026-07-09
+
+Chạy `report --company miyano --from 2026-06-01 --to 2026-06-30` so với
+`docs/MVL 6.26_...xlsx`: **cấu trúc + 27 HĐ chung khớp 100% tiền**; tool giữ số 0
+đầu `SHDon` đúng theo XML (mẫu bị Excel cắt). Mẫu 40 HĐ / 37.981.600; tool 27 HĐ /
+10.019.380 → thiếu **13 HĐ (74% giá trị)** vì chưa có XML trong `data/`:
+- **Nhóm A** (chỉ-link cổng SPA/captcha, chờ browser): meinvoice (CG GLOBAL, CÂY
+  SUNG, TUẤN KIỆT), GSM/Xanh SM (hilo), Viettel K26DAB. → cần Chrome automation.
+- **Nhóm B** (điều tra hộp thư 2026-07-09): **KHÔNG lấy được từ email** —
+  ĐÔI CÁNH & MEGA không có email; GRAB chỉ có "E-Receipt" (HĐ ở app Grab); P.A &
+  BẢO VỆ chỉ lẫn trong gói tài liệu/forward kế toán (đính kèm .doc/hỗn hợp, không
+  phải HĐĐT chuẩn). **Quyết định: chấp nhận NHẬP TAY** (không nới classifier —
+  rủi ro false-positive cao). Không đổi code.
+
 ## Ghi chú
 
 - T11 là phần fragile duy nhất, không làm mù được — chờ email thật.
