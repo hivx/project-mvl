@@ -95,6 +95,11 @@ def parse_pdf_text(text: str) -> Optional[Invoice]:
     )
 
 
+# A PDF whose embedded text layer is shorter than this is treated as a scanned
+# image (nothing to parse) → fall back to OCR.
+_MIN_TEXT_LEN = 50
+
+
 def pdf_to_text(pdf_path) -> str:
     """Run `pdftotext -layout` on a PDF; empty string if it fails / no text layer."""
     try:
@@ -105,9 +110,43 @@ def pdf_to_text(pdf_path) -> str:
         return ""
 
 
+def pdf_to_ocr_text(pdf_path, lang: str = "vie") -> str:
+    """OCR a scanned (image-only) PDF: pdftoppm (page 1, 300dpi PNG) → tesseract.
+
+    Returns '' on any failure or missing binary (tesseract/pdftoppm) — the caller
+    then keeps the invoice as "cần nhập tay" rather than crashing. Only page 1 is
+    OCR'd: the header/totals a VN e-invoice needs live there, and piping a single
+    PNG to stdout avoids multi-page concatenation.
+    """
+    try:
+        ppm = subprocess.run(
+            ["pdftoppm", "-r", "300", "-png", "-f", "1", "-l", "1", str(pdf_path), "-"],
+            capture_output=True, timeout=120)
+        if ppm.returncode != 0 or not ppm.stdout:
+            return ""
+        ocr = subprocess.run(["tesseract", "stdin", "stdout", "-l", lang],
+                             input=ppm.stdout, capture_output=True, timeout=120)
+        if ocr.returncode != 0:
+            return ""
+        return ocr.stdout.decode("utf-8", "replace")
+    except (FileNotFoundError, subprocess.SubprocessError):
+        return ""
+
+
 def extract_pdf_invoice(pdf_path) -> Optional[Invoice]:
-    """Extract an Invoice from a PDF-only bản thể hiện, or None if not parseable."""
-    inv = parse_pdf_text(pdf_to_text(pdf_path))
+    """Extract an Invoice from a PDF-only bản thể hiện, or None if not parseable.
+
+    Prefer the embedded text layer (fast, exact). If the PDF has essentially no
+    text — a scanned image — fall back to OCR and flag ``nguon="PDF-OCR"`` so the
+    report marks it for closer đối soát (OCR can misread digits).
+    """
+    text = pdf_to_text(pdf_path)
+    nguon = "PDF"
+    if len(text.strip()) < _MIN_TEXT_LEN:
+        text = pdf_to_ocr_text(pdf_path)
+        nguon = "PDF-OCR"
+    inv = parse_pdf_text(text)
     if inv is not None:
         inv.pdf_path = str(pdf_path)
+        inv.nguon = nguon
     return inv

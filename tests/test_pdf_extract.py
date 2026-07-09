@@ -58,3 +58,58 @@ def test_parse_pdf_tax_line():
 def test_parse_pdf_returns_none_when_unparseable():
     # A PDF with no invoice-total line -> we don't fabricate numbers.
     assert parse_pdf_text("Đây chỉ là văn bản linh tinh, không có tổng tiền.") is None
+
+
+# --- OCR fallback (T31): scanned image PDFs with no text layer ---------------
+
+def test_extract_uses_ocr_when_no_text_layer(monkeypatch, tmp_path):
+    """A scanned PDF (no text layer) is OCR'd; recovered invoice flagged PDF-OCR."""
+    import hdtool.pdf_extract as pe
+    monkeypatch.setattr(pe, "pdf_to_text", lambda p: "")            # no embedded text
+    monkeypatch.setattr(pe, "pdf_to_ocr_text", lambda p, lang="vie": SAMPLE)
+    pdf = tmp_path / "scan.pdf"
+    pdf.write_bytes(b"%PDF-1.4 fake")
+    inv = pe.extract_pdf_invoice(pdf)
+    assert inv is not None
+    assert inv.so_hd == "999999"
+    assert inv.nguon == "PDF-OCR"        # OCR source -> flagged for closer đối soát
+    assert inv.pdf_path == str(pdf)
+
+
+def test_extract_returns_none_when_ocr_also_empty(monkeypatch, tmp_path):
+    """No text layer AND OCR yields nothing -> None (stays 'cần nhập tay')."""
+    import hdtool.pdf_extract as pe
+    monkeypatch.setattr(pe, "pdf_to_text", lambda p: "")
+    monkeypatch.setattr(pe, "pdf_to_ocr_text", lambda p, lang="vie": "")
+    pdf = tmp_path / "scan.pdf"
+    pdf.write_bytes(b"x")
+    assert pe.extract_pdf_invoice(pdf) is None
+
+
+def test_extract_keeps_pdf_source_when_text_layer_present(monkeypatch, tmp_path):
+    """Text layer present -> use it, keep nguon='PDF', never run OCR."""
+    import hdtool.pdf_extract as pe
+    monkeypatch.setattr(pe, "pdf_to_text", lambda p: SAMPLE)
+
+    def boom(*a, **k):
+        raise AssertionError("OCR must not run when a text layer exists")
+
+    monkeypatch.setattr(pe, "pdf_to_ocr_text", boom)
+    pdf = tmp_path / "text.pdf"
+    pdf.write_bytes(b"x")
+    inv = pe.extract_pdf_invoice(pdf)
+    assert inv is not None
+    assert inv.nguon == "PDF"
+
+
+def test_ocr_text_empty_when_tesseract_missing(monkeypatch, tmp_path):
+    """pdf_to_ocr_text degrades to '' (never throws) when a binary is absent."""
+    import hdtool.pdf_extract as pe
+
+    def raise_fnf(*a, **k):
+        raise FileNotFoundError("tesseract not installed")
+
+    monkeypatch.setattr(pe.subprocess, "run", raise_fnf)
+    pdf = tmp_path / "x.pdf"
+    pdf.write_bytes(b"x")
+    assert pe.pdf_to_ocr_text(pdf) == ""

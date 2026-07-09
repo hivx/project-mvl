@@ -110,7 +110,7 @@ thêm cột **Nguồn** (XML/PDF/Cổng).
 Spec: `docs/superpowers/specs/2026-07-09-ocr-pdf-and-http-link-adapter.md`.
 2 nhánh độc lập (A: OCR / B: adapter HTTP), làm song song.
 
-- [ ] **T31 — OCR fallback (nhánh A)**: `pdf_to_ocr_text` (pdftoppm 300dpi trang 1
+- [x] **T31 — OCR fallback (nhánh A)**: `pdf_to_ocr_text` (pdftoppm 300dpi trang 1
   → tesseract -l vie, degrade rỗng khi thiếu binary); `extract_pdf_invoice` bóc
   text layer trước, thiếu text (<50 ký tự) → OCR, gắn `nguon="PDF-OCR"`. TDD mock.
 - [ ] **T32 — Cột Nguồn nhận `PDF-OCR`**: `bk_tt80_rows` (dùng chung Excel+CSV) phát
