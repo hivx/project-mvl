@@ -125,10 +125,11 @@ Spec: `docs/superpowers/specs/2026-07-09-ocr-pdf-and-http-link-adapter.md`.
 - [x] **T34 — Adapter Fast e-Invoice**: `fast_einvoice.py` (claim link ký type=&hash=,
   fetch XML type=2 + PDF type=1, degrade `[]`) + đăng ký registry. TDD mock HTTP;
   chạy thật HĐ số 736 (PYS, 53.635.000đ) qua đúng luồng `collect`.
-- [~] **T35 — Tài liệu + chạy thật**: ĐÃ cập nhật `adapters/README.md`, `CLAUDE.md`,
-  `plan.md`. Fast đã chứng minh end-to-end qua ĐÚNG luồng `collect` thật
-  (extract_links→try_fetch_links→XML+PDF). **Còn lại (cần bạn)**: chạy full
-  `hdtool collect` để tải hàng loạt về `data/` (ghi nhiều file, gọi cổng ngoài).
+- [x] **T35 — Tài liệu + chạy thật**: cập nhật `adapters/README.md`, `CLAUDE.md`,
+  `plan.md`. Chạy full `hdtool collect --include-suspect` (2026-07-09): Fast HĐ 736
+  tự tải về `data/medcons/2026-02/` (XML+PDF); danh sách "cần tải tay" **113→40**
+  (−72 VCB nhờ T36, −1 Fast). 40 còn lại = cổng SPA/captcha (ngoài phạm vi).
+  Thêm `test_pdf_ocr_integration.py` verify OCR end-to-end (skip nếu thiếu tesseract/gs).
 - [x] **T36 — Lọc biên lai Vietcombank khỏi ứng viên** (bạn duyệt 2026-07-09):
   thêm `exclude_senders` (config) vào classifier; sender khớp + KHÔNG có XML →
   `ignore` (XML vẫn override để không mất HĐ thật). `settings.yaml` thêm
