@@ -105,6 +105,23 @@ thêm cột **Nguồn** (XML/PDF/Cổng).
   email `invoice/getinvoice?token=` trả **XML thẳng** (không captcha — captcha chỉ ở
   trang tra cứu). Adapter GET link đó → XML. TDD mock HTTP. ~13 HĐ.
 
+## Đợt 6 — OCR HĐ chỉ-PDF (ảnh scan) + adapter HTTP cho HĐ chỉ-link
+
+Spec: `docs/superpowers/specs/2026-07-09-ocr-pdf-and-http-link-adapter.md`.
+2 nhánh độc lập (A: OCR / B: adapter HTTP), làm song song.
+
+- [ ] **T31 — OCR fallback (nhánh A)**: `pdf_to_ocr_text` (pdftoppm 300dpi trang 1
+  → tesseract -l vie, degrade rỗng khi thiếu binary); `extract_pdf_invoice` bóc
+  text layer trước, thiếu text (<50 ký tự) → OCR, gắn `nguon="PDF-OCR"`. TDD mock.
+- [ ] **T32 — Cột Nguồn nhận `PDF-OCR`**: `bk_tt80_rows` (dùng chung Excel+CSV) phát
+  `inv.nguon` verbatim → PDF-OCR chảy qua sẵn. Test khóa hành vi trong CSV.
+- [ ] **T33 — Spike Fast e-Invoice + Vietcombank (nhánh B)**: GET token bằng
+  `requests`, ghi lại phản hồi (file? JS? captcha?). Quyết định khả thi/không.
+- [ ] **T34 — Adapter HTTP (nếu T33 khả thi)**: `fast_einvoice.py`/`vietcombank.py`
+  + đăng ký + test mock HTTP + chạy thật 1 HĐ.
+- [ ] **T35 — Tài liệu + chạy thật**: cập nhật `adapters/README.md`, `CLAUDE.md`,
+  `plan.md`; chạy lại collect + report, đối chiếu số HĐ "cần tải tay" giảm.
+
 ## Ghi chú
 
 - T11 là phần fragile duy nhất, không làm mù được — chờ email thật.
