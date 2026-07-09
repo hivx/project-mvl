@@ -29,7 +29,7 @@ src/hdtool/
   models.py      # dataclass Invoice, TaxLine, EmailCandidate
   xmlutil.py     # tìm phần tử theo local-name, bỏ qua namespace
   parse_xml.py   # XML chuẩn TCT -> Invoice
-  pdf_extract.py # bóc HĐ chỉ-PDF (pdftotext, layout Thái Sơn) -> Invoice(nguon=PDF)
+  pdf_extract.py # bóc HĐ chỉ-PDF: pdftotext (nguon=PDF); PDF ảnh scan -> OCR tesseract-vie (nguon=PDF-OCR)
   mailscan.py    # IMAP readonly: quét + fetch (helper thuần tách riêng để test)
   classify.py    # chấm điểm email -> certain/suspect/ignore
   collect.py     # trích attachment (giải nén zip), dò link, lưu cây thư mục
@@ -90,9 +90,12 @@ chính + `-tong-hop.csv` + `-bo-qua.csv`.
 - Hộp thư hóa đơn thật là **`anh.doan@medcons.vn`** (khai `IMAP_USER_2`), chứa hóa
   đơn của CẢ hai công ty. `info@miyano.com.vn` gần như không có hóa đơn XML.
 - **Adapter portal chỉ viết được sau khi khảo sát email thật** của từng nhà phát
-  hành. Đã có **`einvoice.com.vn`** (saigoncoop… — tải HTTP tự động, không captcha);
-  meinvoice/easyinvoice là SPA (cần dò XHR), ehoadon/VNPT có captcha (cần trình
-  duyệt/tay). Xem `src/hdtool/adapters/README.md`.
+  hành. Tự động (HTTP): **`einvoice.com.vn`** (saigoncoop…), **`vnpt-invoice`** và
+  **`einvoice.fast.com.vn`** (Fast) — cả VNPT lẫn Fast dùng chung pattern "email có
+  link tải-thẳng đã ký, bỏ qua captcha ở trang tra cứu". meinvoice/easyinvoice là
+  SPA (cần dò XHR), ehoadon có ReCaptcha (cần trình duyệt/tay). Email
+  `VCBDigibank@info.vietcombank.com.vn` là **biên lai NH, không phải HĐ GTGT**.
+  Xem `src/hdtool/adapters/README.md`.
 - Ghi chú dữ liệu: bản Anh Doan **forward** thường có XML hỏng 37 byte → rơi vào
   `_chua-ro-cong-ty`, nhưng bản gốc parse được nên KHÔNG mất hóa đơn (đã kiểm chứng
   118=118 sau migrate).

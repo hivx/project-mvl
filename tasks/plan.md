@@ -125,8 +125,13 @@ Spec: `docs/superpowers/specs/2026-07-09-ocr-pdf-and-http-link-adapter.md`.
 - [x] **T34 — Adapter Fast e-Invoice**: `fast_einvoice.py` (claim link ký type=&hash=,
   fetch XML type=2 + PDF type=1, degrade `[]`) + đăng ký registry. TDD mock HTTP;
   chạy thật HĐ số 736 (PYS, 53.635.000đ) qua đúng luồng `collect`.
-- [ ] **T35 — Tài liệu + chạy thật**: cập nhật `adapters/README.md`, `CLAUDE.md`,
-  `plan.md`; chạy lại collect + report, đối chiếu số HĐ "cần tải tay" giảm.
+- [~] **T35 — Tài liệu + chạy thật**: ĐÃ cập nhật `adapters/README.md`, `CLAUDE.md`,
+  `plan.md`. Fast đã chứng minh end-to-end qua ĐÚNG luồng `collect` thật
+  (extract_links→try_fetch_links→XML+PDF). **Còn lại (cần bạn)**: chạy full
+  `hdtool collect` để tải hàng loạt về `data/` (ghi nhiều file, gọi cổng ngoài).
+- [ ] **T36 — (chờ bạn duyệt) Lọc biên lai Vietcombank khỏi ứng viên**: 72 email
+  VCBDigibank "Biên lai chuyển tiền" không phải HĐ GTGT → thêm luật classify để
+  không liệt vào "cần tải tay". Đụng logic phân loại → cần bạn xác nhận cách lọc.
 
 ## Ghi chú
 
