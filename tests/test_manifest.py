@@ -54,3 +54,23 @@ def test_filter_uncollected_splits():
     assert [c.message_id for c in skipped] == ["<already@x>"]
     # new + blank-id both go to to_collect (blank can't be deduped)
     assert [c.message_id for c in to_collect] == ["<new@x>", ""]
+
+
+def test_email_chi_luu_duoc_zip_thi_CHUA_coi_la_da_tai():
+    """Zip mã hóa chưa giải nén không phải là hóa đơn -> phải tải lại để thử ghép
+    mật khẩu, nếu không những HĐ SMBC sẽ mắc kẹt vĩnh viễn trong manifest."""
+    m = {}
+    mark_collected(m, "m-zip", {"zip": "data/_chua-ro-cong-ty/2026-06/x/invoice.zip"})
+    assert is_collected(m, "m-zip") is False
+
+
+def test_email_co_xml_van_coi_la_da_tai():
+    m = {}
+    mark_collected(m, "m-xml", {"xml": "data/miyano/2026-06/x/hd.xml"})
+    assert is_collected(m, "m-xml") is True
+
+
+def test_email_co_zip_va_xml_thi_da_tai():
+    m = {}
+    mark_collected(m, "m2", {"zip": "a.zip", "xml": "b.xml"})
+    assert is_collected(m, "m2") is True

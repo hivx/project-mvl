@@ -44,3 +44,27 @@ def test_save_khong_de_lai_file_tam(tmp_path):
     p = tmp_path / "so.csv"
     save(p, [WorkRow(message_id="m1")])
     assert [f.name for f in tmp_path.iterdir()] == ["so.csv"]
+
+
+# ------------------------ T49: bản Re:/Fwd: không đính kèm là BẢN SAO, không thiếu
+
+def test_index_da_tai_theo_tieu_de_chuan_hoa():
+    from hdtool.worklist import index_da_tai
+    rows = {
+        "m1": WorkRow(message_id="m1", tieu_de="CÔNG TY ABC gửi hóa đơn số 123",
+                      trang_thai="đã tải", file="data/miyano/2026-06/x/hd.xml"),
+        "m2": WorkRow(message_id="m2", tieu_de="Chưa tải được", trang_thai="cần trình duyệt"),
+    }
+    idx = index_da_tai(rows)
+    assert idx["công ty abc gửi hóa đơn số 123"] == "data/miyano/2026-06/x/hd.xml"
+    assert "chưa tải được" not in idx
+
+
+def test_index_da_tai_khop_ca_ban_forward():
+    from hdtool.worklist import index_da_tai, khop_ban_goc
+    rows = {"m1": WorkRow(message_id="m1", tieu_de="ABC gửi hóa đơn 123",
+                          trang_thai="đã tải", file="data/x/hd.xml")}
+    idx = index_da_tai(rows)
+    assert khop_ban_goc(idx, "Fwd: ABC gửi hóa đơn 123") == "data/x/hd.xml"
+    assert khop_ban_goc(idx, "Re: Fwd: ABC gửi hóa đơn 123") == "data/x/hd.xml"
+    assert khop_ban_goc(idx, "Hóa đơn khác hẳn") is None

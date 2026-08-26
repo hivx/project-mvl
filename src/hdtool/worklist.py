@@ -96,3 +96,20 @@ def save(path, rows: list) -> Path:
 def upsert(path, rows: list) -> Path:
     """load + merge + save."""
     return save(path, merge(load(path), rows))
+
+
+def index_da_tai(rows: dict) -> dict:
+    """{tiêu đề chuẩn hóa: đường dẫn file} cho những dòng ĐÃ TẢI.
+
+    Dùng để nhận ra bản ``Re:``/``Fwd:`` không đính kèm chỉ là BẢN SAO của hóa
+    đơn đã có, chứ không phải hóa đơn đang thiếu.
+    """
+    from .zipmail import chuan_hoa_tieu_de
+    return {chuan_hoa_tieu_de(r.tieu_de): r.file
+            for r in rows.values() if r.trang_thai == "đã tải" and r.tieu_de}
+
+
+def khop_ban_goc(idx: dict, tieu_de: str):
+    """Đường dẫn bản gốc nếu tiêu đề này (bỏ Re:/Fwd:) đã có hóa đơn. None nếu không."""
+    from .zipmail import chuan_hoa_tieu_de
+    return idx.get(chuan_hoa_tieu_de(tieu_de))

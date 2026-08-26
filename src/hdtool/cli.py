@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
 
-from . import lookup, portal_probe, worklist
+from . import lookup, portal_probe, worklist, zipmail
 from .collect import (_body_text, extract_links, invoice_dir, invoice_files,
                       save_invoice_files)
 from .config import Settings, load_settings
@@ -261,10 +261,14 @@ def cmd_collect(settings: Settings, args) -> int:
               + (f" (bỏ qua {', '.join(bo_qua)})" if bo_qua else ""))
     manifest_path = settings.data_dir / ".collected.json"
     manifest = load_manifest(manifest_path)
+    so_path = settings.data_dir / "so-hoa-don-cho-tai.csv"
+    # Bản Re:/Fwd: không đính kèm thường chỉ là BẢN SAO của hóa đơn đã có.
+    idx_da_tai = worklist.index_da_tai(worklist.load(so_path))
     need_manual = []
     so_rows = []
     errors = []
     lac = []                 # HĐ tải từ hộp thư công ty này nhưng bên mua là công ty khác
+    cho_ghep = []            # (candidate, zip_bytes|None, mật_khẩu|None) — SMBC gửi 2 email
     saved_count = 0
     for account in accounts:
         scanner = MailScanner(settings, account)
@@ -281,6 +285,18 @@ def cmd_collect(settings: Settings, args) -> int:
                 try:
                     msg = scanner.fetch_message(c.uid)
                     files = invoice_files(msg)
+                    # Zip MÃ HÓA: mật khẩu nằm ở email khác cùng tiêu đề (SMBC).
+                    # Hoãn lại, ghép sau khi đã quét hết mọi hộp thư.
+                    zip_mh = [f for f in files
+                              if f.kind == "zip" and zipmail.la_zip_ma_hoa(f.data)]
+                    if zip_mh:
+                        cho_ghep.append((c, zip_mh[0].data, None))
+                        continue
+                    if not files:
+                        mk = zipmail.tim_mat_khau(_body_text(msg))
+                        if mk:                       # email chỉ chở mật khẩu
+                            cho_ghep.append((c, None, mk))
+                            continue
                     row = None
                     if not files:
                         row = _dong_so(c, msg, settings)
@@ -289,8 +305,14 @@ def cmd_collect(settings: Settings, args) -> int:
                             row.ma_tra_cuu or None,
                             registry_path=NCC_REGISTRY)
                         if not res.files:
-                            row.trang_thai = portal_probe.trang_thai(res)
-                            row.chan_doan = res.chan_doan
+                            ban_goc = worklist.khop_ban_goc(idx_da_tai, c.subject)
+                            if ban_goc:
+                                row.trang_thai = "trùng bản gốc"
+                                row.chan_doan = f"đã có bản gốc: {ban_goc}"
+                                row.file = ban_goc
+                            else:
+                                row.trang_thai = portal_probe.trang_thai(res)
+                                row.chan_doan = res.chan_doan
                             so_rows.append(row)
                             need_manual.append((c, [row.link_tra_cuu] if row.link_tra_cuu else []))
                             continue
@@ -310,6 +332,7 @@ def cmd_collect(settings: Settings, args) -> int:
                     if row is not None:                 # hóa đơn chỉ-link vừa tải được
                         row.trang_thai, row.file, row.chan_doan = "đã tải", str(where), ""
                         so_rows.append(row)
+                    idx_da_tai[zipmail.chuan_hoa_tieu_de(c.subject)] = str(where)
                     print(f"  ✓ {c.subject[:50]} -> {where}")
                 except Exception as exc:  # noqa: BLE001 - keep going on any single email
                     errors.append((c, str(exc)))
@@ -322,7 +345,7 @@ def cmd_collect(settings: Settings, args) -> int:
         for c, links in need_manual:
             print(f"  - [{c.account}] {c.sender} | {c.subject[:45]} | {links or 'không thấy link'}")
     if so_rows:
-        so = settings.data_dir / "so-hoa-don-cho-tai.csv"
+        so = so_path
         worklist.upsert(so, so_rows)
         da_tai = sum(1 for r in so_rows if r.trang_thai == "đã tải")
         print(f"→ Sổ hóa đơn chỉ-link: {so}"
@@ -331,6 +354,31 @@ def cmd_collect(settings: Settings, args) -> int:
         print(f"\n✗ {len(errors)} email lỗi khi tải (bỏ qua, không làm sập batch):")
         for c, msg in errors[:20]:
             print(f"  - [{c.account}] {c.subject[:45]} — {msg}")
+    if cho_ghep:
+        cap = zipmail.ghep_cap([(c.message_id, c.subject, z, mk) for c, z, mk in cho_ghep])
+        print(f"\n== ZIP MÃ HÓA: {len(cho_ghep)} email, ghép được {len(cap)} cặp ==")
+        theo_id = {c.message_id: c for c, _, _ in cho_ghep}
+        for mid, (zip_bytes, mat_khau) in cap.items():
+            c = theo_id[mid]
+            files = zipmail.giai_nen_co_mat_khau(zip_bytes, mat_khau)
+            if not files:
+                print(f"  ✗ sai mật khẩu / zip hỏng: {c.subject[:50]}")
+                continue
+            company, ngay = _peek_company_date(files, c, settings)
+            dest = invoice_dir(settings.data_dir, company, ngay, _extract_email(c.sender))
+            saved = save_invoice_files(files, dest)
+            mark_collected(manifest, c.message_id, saved)
+            saved_count += 1
+            print(f"  ✓ {c.subject[:50]} -> {saved.get('xml') or saved.get('pdf')}")
+        save_manifest(manifest_path, manifest)
+        thieu = [c for c, z, _ in cho_ghep if z and c.message_id not in cap]
+        for c in thieu:
+            so_rows.append(worklist.WorkRow(
+                message_id=c.message_id, ngay_mail=str(c.internal_date or ""),
+                hop_thu=c.account, nguoi_gui=c.sender, tieu_de=c.subject,
+                ncc="(zip mã hóa)", trang_thai="thiếu mật khẩu zip",
+                chan_doan="không tìm thấy email chứa mật khẩu cùng tiêu đề",
+                ghi_chu="dán mật khẩu vào cột 'Mã tra cứu' rồi chạy lại"))
     if lac:
         print(f"\n⚠ {len(lac)} hóa đơn lạc công ty (hộp thư một đằng, bên mua một nẻo):")
         for tieu_de, hop, chu, ben_mua in lac[:10]:
