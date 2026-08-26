@@ -34,9 +34,33 @@ Mỗi trang được `portal_probe.classify_page` chấm trên HTML tải về t
 ## Trả lời Open Questions của spec
 
 **1. Link tải MISA `DownloadHandler.ashx?Type=xml&Code=…` có tải được bằng GET
-thuần không? → KHÔNG.** Trả `200` nhưng **body rỗng 0 byte, không content-type**
-— kể cả với chính link mẫu người dùng đưa, và với hai mã lấy tươi từ mail. Cần
-phiên/cookie/referer từ trang tra cứu đã qua captcha.
+thuần không? → KHÔNG. Endpoint là STATEFUL, `Code=` trong URL không chọn hóa đơn.**
+
+Quét biến thể (2026-08-26) — mọi trường hợp đều `200` + `Content-Length: 0`:
+
+| Biến thể | Kết quả |
+|---|---|
+| `Type=xml&Code=<mã>` (mã cũ lẫn mã tươi) | 200, 0 byte |
+| `Type=1` / `2` / `3` | 200, 0 byte |
+| Bỏ hẳn `Type` | 200, 0 byte |
+| `sc=` hoặc `MTC=` thay `Code=` | 200, 0 byte |
+| **Không tham số nào** | **200, 0 byte** |
+| POST thay GET | 200, 0 byte |
+| Có cookie phiên (chưa qua captcha) + Referer | 200, 0 byte |
+| http:// thay https://, www/không-www | 200, 0 byte |
+
+**Gọi không tham số cho kết quả y hệt gọi với mã hợp lệ** ⇒ URL không phải thứ
+định danh hóa đơn; server đọc từ trạng thái phiên. Chứng cứ thứ hai: HTML trang
+tra cứu (`data/_chan-doan/meinvoice.html`) **không chứa chuỗi `DownloadHandler`
+nào** — chỉ có form `txtCode` + `captcha$captchaTextbox`. Link tải chỉ sinh ra ở
+trang kết quả sau captcha.
+
+**Đừng thử lại bằng cách sửa tham số** — đã quét hết. Khác hẳn `ipos.vn`/VNPT/Fast
+là link ĐÃ KÝ, thật sự stateless nên HTTP thuần tải được.
+
+**Câu còn treo:** giải captcha một lần cấp quyền cho CẢ PHIÊN hay chỉ cho đúng
+hóa đơn vừa tra? Quyết định 1 hay 22 lần gõ captcha. Chỉ trả lời được khi có
+người giải captcha thật.
 
 **2. Trang tra cứu meinvoice có phải SPA không? → KHÔNG, là CAPTCHA.** Trang trả
 HTML thật 82KB, có `<form>` với ô `txtCode` + `captcha$captchaTextbox`. README
