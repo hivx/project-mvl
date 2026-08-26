@@ -10,11 +10,21 @@ mạng để test được offline — theo đúng lối `mailscan` tách helper
 from __future__ import annotations
 
 import re
+import time
+from dataclasses import dataclass, field
 from typing import Optional
 from urllib.parse import urljoin
 
+import requests
+
+from .collect import Attachment, _kind, expand_zips
 from .models import Invoice
 from .parse_xml import InvoiceParseError, parse_invoice_xml
+
+#: Trần request cho MỖI hóa đơn — không dò lan man trên cổng của người ta.
+MAX_REQUESTS = 5
+#: Số ứng viên link tải thử tối đa.
+MAX_CANDIDATES = 3
 
 _CAPTCHA = ("recaptcha", "g-recaptcha", "hcaptcha", "captcha")
 _DL_HINT = ("xml", "download", "tai-ve", "taive", "export", "downloadhandler")
@@ -27,9 +37,15 @@ MA_INPUT = re.compile(r"(ma|code|key)", re.IGNORECASE)
 def _anchors(html: str, base_url: str, ma: str = "") -> list:
     """Anchor có dáng link tải, xếp theo độ tin cậy giảm dần."""
     found: list = []
-    for m in re.finditer(r"<a\b[^>]*href=\"([^\"]+)\"[^>]*>(.*?)</a>",
-                         html or "", re.IGNORECASE | re.DOTALL):
-        href, text = m.group(1), m.group(2)
+    # Tách 2 bước (thẻ -> href) thay vì một regex có [^>]* ở cả hai phía href:
+    # trang tra cứu thật nặng ~80KB, kiểu regex đó backtrack siêu tuyến tính.
+    for m in re.finditer(r"<a\b([^>]*)>(.*?)</a>", html or "",
+                         re.IGNORECASE | re.DOTALL):
+        attrs, text = m.group(1), m.group(2)
+        href_m = re.search(r'href="([^"]+)"', attrs, re.IGNORECASE)
+        if not href_m:
+            continue
+        href = href_m.group(1)
         diem = 0
         if ma and ma in href:
             diem += 5                                  # tin cậy nhất
@@ -120,3 +136,105 @@ def accept_files(files: list) -> Optional[Invoice]:
         if inv.so_hd and inv.ngay_lap and inv.mst_ban:
             return inv
     return None
+
+
+_CHAN_DOAN = {
+    "captcha": "có captcha — cần trình duyệt",
+    "spa": "trang SPA — cần trình duyệt",
+    "error": "link hỏng hoặc hết hạn",
+}
+
+
+@dataclass
+class ProbeResult:
+    """Kết quả dò một hóa đơn chỉ-link."""
+    files: list = field(default_factory=list)
+    download_url: Optional[str] = None
+    page_kind: str = ""
+    chan_doan: str = ""
+
+
+def _new_session() -> requests.Session:
+    s = requests.Session()
+    s.headers["User-Agent"] = "Mozilla/5.0"
+    return s
+
+
+def _filename(cd: str, fallback: str = "hoadon.xml") -> str:
+    m = re.search(r'filename\*?=(?:UTF-8\'\')?"?([^";]+)', cd or "")
+    return m.group(1).strip() if m else fallback
+
+
+def _as_files(resp) -> list:
+    """Response -> Attachment (giải nén zip nếu cần). Trang HTML -> []."""
+    ct = (resp.headers.get("content-type") or "").lower()
+    if "html" in ct or not getattr(resp, "content", b""):
+        return []
+    fname = _filename(resp.headers.get("content-disposition", ""))
+    return expand_zips([Attachment(fname, _kind(fname), resp.content)])
+
+
+def probe(url: str, ma: Optional[str] = None, session_factory=None) -> ProbeResult:
+    """Dò một link tra cứu: lấy trang -> phân loại -> (POST form) -> tải -> xác minh.
+
+    Không bao giờ ném ngoại lệ: lỗi nào cũng thành ``ProbeResult`` rỗng kèm chẩn
+    đoán, để một hóa đơn hỏng không làm sập cả batch.
+    """
+    try:
+        session = (session_factory or _new_session)()
+        used = 0
+        resp = session.get(url, timeout=30)
+        used += 1
+        kind = classify_page(resp.status_code, resp.headers.get("content-type", ""),
+                             getattr(resp, "text", ""), ma or "")
+        if kind == "file":
+            files = _as_files(resp)
+            if accept_files(files):
+                return ProbeResult(files, url, kind)
+            return ProbeResult([], None, kind,
+                               "tải được file nhưng không parse ra hóa đơn")
+        if kind in _CHAN_DOAN:
+            return ProbeResult([], None, kind, _CHAN_DOAN[kind])
+
+        html, base = getattr(resp, "text", ""), url
+        if kind == "form":
+            form = find_form(html, url)
+            if not form or not ma:
+                return ProbeResult([], None, kind, "trang cần nhập mã nhưng không có mã")
+            for ten, gia_tri in list(form["fields"].items()):
+                if not gia_tri and MA_INPUT.search(ten):
+                    form["fields"][ten] = ma
+            resp = (session.post(form["action"], data=form["fields"], timeout=30)
+                    if form["method"] == "post"
+                    else session.get(form["action"], params=form["fields"], timeout=30))
+            used += 1
+            html, base = getattr(resp, "text", ""), form["action"]
+
+        for cand in candidate_download_links(html, base, ma or "")[:MAX_CANDIDATES]:
+            if used >= MAX_REQUESTS:
+                break
+            time.sleep(1)                      # lịch sự với cổng của nhà cung cấp
+            dl = session.get(cand, timeout=30)
+            used += 1
+            files = _as_files(dl)
+            if accept_files(files):
+                return ProbeResult(files, cand, "links")
+        return ProbeResult([], None, kind or "links", "không tìm thấy link tải dùng được")
+    except Exception as exc:  # noqa: BLE001 - không bao giờ làm sập batch
+        return ProbeResult([], None, "error", f"lỗi mạng: {exc}")
+
+
+def fetch_link_only(links: list, ma: Optional[str] = None,
+                    session_factory=None) -> ProbeResult:
+    """Adapter code sẵn có trước (nhanh, đã kiểm chứng), không được thì mới dò."""
+    from .adapters import try_fetch_links
+
+    files = try_fetch_links(links or [], ma)
+    if files and accept_files(files):
+        return ProbeResult(files, (links or [None])[0], "adapter")
+    res = ProbeResult([], None, "error", "không có link tra cứu")
+    for url in (links or [])[:2]:
+        res = probe(url, ma, session_factory)
+        if res.files:
+            break
+    return res

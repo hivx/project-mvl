@@ -77,3 +77,140 @@ def test_accept_files_tu_choi_trang_html_gia_dang():
 def test_accept_files_tu_choi_pdf_don_doc():
     """Nguyên tắc: số liệu chỉ từ XML. PDF đơn độc KHÔNG tính là thành công."""
     assert accept_files([Attachment("hd.pdf", "pdf", b"%PDF-1.4 fake")]) is None
+
+
+# ---------------------------------------------------------------- probe (mock HTTP)
+
+import pytest  # noqa: E402
+
+from hdtool.portal_probe import probe  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _khong_ngu(monkeypatch):
+    """Bỏ nghỉ-giữa-request cho test chạy nhanh."""
+    monkeypatch.setattr("hdtool.portal_probe.time.sleep", lambda *_: None)
+
+
+class FakeResp:
+    def __init__(self, content=b"", status=200, headers=None):
+        self.content = content
+        self.status_code = status
+        self.headers = headers or {}
+
+    @property
+    def text(self):
+        return self.content.decode("utf-8", "replace")
+
+
+class FakeSession:
+    """Trả response theo đúng URL được gọi; đếm số request."""
+
+    def __init__(self, by_url):
+        self.by_url = by_url
+        self.headers = {}
+        self.calls = []
+
+    def get(self, url, **kw):
+        self.calls.append(url)
+        return self.by_url.get(url, FakeResp(b"", status=404))
+
+    def post(self, url, data=None, **kw):
+        self.calls.append(url)
+        return self.by_url.get(url, FakeResp(b"", status=404))
+
+
+HTML_TRANG = b'<html><a href="/dl?Code=ABC123&Type=xml">Tai XML</a></html>'
+CT_HTML = {"content-type": "text/html"}
+CT_XML = {"content-type": "application/xml",
+          "content-disposition": 'attachment;filename="hd.xml"'}
+
+
+def test_probe_tai_va_xac_minh_duoc_tu_trang_html_thuan():
+    sess = FakeSession({
+        "https://x.vn/tra-cuu?c=ABC123": FakeResp(HTML_TRANG, headers=CT_HTML),
+        "https://x.vn/dl?Code=ABC123&Type=xml": FakeResp(XML_OK, headers=CT_XML),
+    })
+    res = probe("https://x.vn/tra-cuu?c=ABC123", "ABC123", lambda: sess)
+    assert res.page_kind == "links"
+    assert res.download_url == "https://x.vn/dl?Code=ABC123&Type=xml"
+    assert [f.kind for f in res.files] == ["xml"]
+
+
+def test_probe_dung_ngay_khi_gap_captcha_va_khong_tai_gi():
+    sess = FakeSession({"https://x.vn/p": FakeResp(
+        b'<div class="g-recaptcha"></div>', headers=CT_HTML)})
+    res = probe("https://x.vn/p", "ABC123", lambda: sess)
+    assert res.page_kind == "captcha" and res.files == []
+    assert len(sess.calls) == 1              # KHÔNG thử tải thêm gì
+    assert "captcha" in res.chan_doan
+
+
+def test_probe_khong_nhan_ung_vien_tra_ve_html():
+    sess = FakeSession({
+        "https://x.vn/p": FakeResp(HTML_TRANG, headers=CT_HTML),
+        "https://x.vn/dl?Code=ABC123&Type=xml": FakeResp(b"<html>Het han</html>",
+                                                         headers=CT_HTML),
+    })
+    res = probe("https://x.vn/p", "ABC123", lambda: sess)
+    assert res.files == [] and res.chan_doan
+
+
+def test_probe_link_tra_cuu_chinh_la_link_tai():
+    """Ca VNPT/Fast: GET link trong mail ra thẳng XML."""
+    sess = FakeSession({"https://x.vn/getinvoice?token=T": FakeResp(XML_OK, headers=CT_XML)})
+    res = probe("https://x.vn/getinvoice?token=T", None, lambda: sess)
+    assert res.page_kind == "file" and [f.kind for f in res.files] == ["xml"]
+
+
+def test_probe_dien_form_va_post_kem_hidden_field():
+    form = (b'<form action="/tra-cuu" method="post">'
+            b'<input name="MaTraCuu" value="">'
+            b'<input type="hidden" name="__RequestVerificationToken" value="t1">'
+            b'</form>')
+    sess = FakeSession({
+        "https://x.vn/p": FakeResp(form, headers=CT_HTML),
+        "https://x.vn/tra-cuu": FakeResp(HTML_TRANG, headers=CT_HTML),
+        "https://x.vn/dl?Code=ABC123&Type=xml": FakeResp(XML_OK, headers=CT_XML),
+    })
+    res = probe("https://x.vn/p", "ABC123", lambda: sess)
+    assert [f.kind for f in res.files] == ["xml"]
+    assert "https://x.vn/tra-cuu" in sess.calls
+
+
+def test_probe_khong_vuot_qua_gioi_han_request():
+    many = "".join(f'<a href="/dl{i}?Code=ABC123">Tai XML</a>' for i in range(10))
+    sess = FakeSession({"https://x.vn/p": FakeResp(many.encode(), headers=CT_HTML)})
+    probe("https://x.vn/p", "ABC123", lambda: sess)
+    assert len(sess.calls) <= 5              # MAX_REQUESTS
+
+
+def test_probe_loi_mang_khong_nem_ngoai_le():
+    class SessNo:
+        headers = {}
+
+        def get(self, *a, **k):
+            raise RuntimeError("timeout giả")
+
+    res = probe("https://x.vn/p", "ABC123", lambda: SessNo())
+    assert res.files == [] and "lỗi mạng" in res.chan_doan
+
+
+# --------------------------------------------- hồi quy trên HTML cổng THẬT (T37)
+
+import pytest as _pytest  # noqa: E402
+
+
+@_pytest.mark.parametrize("ten,mong_doi", [
+    ("meinvoice.html", "captcha"),    # MISA: form txtCode + captcha$captchaTextbox
+    ("ehoadon.html", "captcha"),      # BKAV: ASP.NET __VIEWSTATE + captcha
+    ("easyinvoice.html", "spa"),      # Thái Sơn: SPA, không anchor tải nào
+    ("hilo.html", "form"),            # GSM/hilo: form Filter.SearchKey, KHÔNG captcha
+])
+def test_classify_tren_trang_that(ten, mong_doi):
+    """Khảo sát T37 lấy về HTML thật; mỗi cổng là một ca hồi quy.
+
+    Chống việc sửa regex sau này làm hỏng nhận diện cổng đã biết.
+    """
+    html = (FIXTURES / "portals" / ten).read_text(encoding="utf-8", errors="replace")
+    assert classify_page(200, "text/html", html) == mong_doi
