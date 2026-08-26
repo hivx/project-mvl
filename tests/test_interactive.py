@@ -71,3 +71,21 @@ def test_run_interactive_csv_extension(tmp_path):
                     execute=lambda s, c, p, o: captured.setdefault("path", p) and 0)
     assert str(captured["path"]).endswith(
         "bang-ke-medcons-2026-06-01_2026-06-30.csv")
+
+
+def test_menu_thu_tai_hd_chi_link_truoc_khi_tong_hop(monkeypatch):
+    """Menu phải gọi cmd_ncc(tai=True) GIỮA collect và report — không hỏi thêm câu nào."""
+    from datetime import date
+
+    from hdtool import cli
+    from hdtool.interactive import Choices, _default_execute
+
+    thu_tu = []
+    monkeypatch.setattr(cli, "cmd_collect", lambda s, a: thu_tu.append("collect") or 0)
+    monkeypatch.setattr(cli, "cmd_ncc", lambda s, a: thu_tu.append(f"ncc:{a.tai}") or 0)
+    monkeypatch.setattr(cli, "cmd_report", lambda s, a: thu_tu.append("report") or 0)
+
+    ch = Choices(from_date=date(2026, 6, 1), to_date=date(2026, 6, 30),
+                 company="miyano", fmt="csv")
+    _default_execute(None, ch, "/tmp/x.csv", lambda *_: None)
+    assert thu_tu == ["collect", "ncc:True", "report"]

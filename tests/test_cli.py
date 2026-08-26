@@ -149,3 +149,78 @@ def test_main_no_args_launches_interactive(monkeypatch):
     monkeypatch.setattr(cli, "_load_settings", lambda: _settings("2026-06-01", "2026-06-30"))
     rc = cli.main([])
     assert rc == 0 and calls.get("ran") is True
+
+
+# ------------------------------------------------------- lệnh `hdtool ncc` (T43)
+
+def test_parser_ncc_va_co_tai():
+    p = build_parser()
+    assert p.parse_args(["ncc"]).tai is False
+    assert p.parse_args(["ncc", "--tai"]).tai is True
+
+
+def _settings_data(tmp_path):
+    s = _settings()
+    s.data_dir = tmp_path
+    return s
+
+
+def test_cmd_ncc_liet_ke_cong_thuc_va_dong_dang_cho(tmp_path, capsys, monkeypatch):
+    from hdtool import ncc, worklist
+    from hdtool.worklist import WorkRow
+
+    reg = tmp_path / "ncc.yaml"
+    ncc.save_registry(reg, [ncc.learn(
+        "https://meinvoice.vn/tra-cuu/DownloadHandler.ashx?Type=xml&Code=GJF211_PDLEP",
+        "GJF211_PDLEP", ten="meinvoice.vn")])
+    monkeypatch.setattr(cli, "NCC_REGISTRY", reg)
+    worklist.save(tmp_path / "so-hoa-don-cho-tai.csv", [
+        WorkRow(message_id="m1", ncc="ehoadon.vn", trang_thai="cần trình duyệt",
+                chan_doan="có captcha — cần trình duyệt"),
+        WorkRow(message_id="m2", ncc="ipos.vn", trang_thai="đã tải"),
+    ])
+    cli.cmd_ncc(_settings_data(tmp_path), SimpleNamespace(tai=False))
+    out = capsys.readouterr().out
+    assert "meinvoice.vn" in out                      # NCC đã có công thức
+    assert "ehoadon.vn" in out and "captcha" in out   # dòng đang chờ + lý do
+    assert "m2" not in out                            # dòng đã tải không nằm ở mục chờ
+
+
+def test_cmd_ncc_tai_dung_ma_nguoi_dung_dien_tay(tmp_path, monkeypatch):
+    """Người dùng gõ mã vào sổ -> `hdtool ncc --tai` phải dùng ĐÚNG mã đó."""
+    from hdtool import worklist
+    from hdtool.portal_probe import ProbeResult
+    from hdtool.worklist import WorkRow
+
+    monkeypatch.setattr(cli, "NCC_REGISTRY", tmp_path / "ncc.yaml")
+    worklist.save(tmp_path / "so-hoa-don-cho-tai.csv", [
+        WorkRow(message_id="m1", link_tra_cuu="https://x.vn/p",
+                ma_tra_cuu="ABC123", trang_thai="thiếu mã")])
+    goi = {}
+
+    def gia(links, ma=None, **kw):
+        goi["links"], goi["ma"] = links, ma
+        return ProbeResult()
+
+    monkeypatch.setattr(cli.portal_probe, "fetch_link_only", gia)
+    cli.cmd_ncc(_settings_data(tmp_path), SimpleNamespace(tai=True))
+    assert goi["ma"] == "ABC123"
+    assert goi["links"] == ["https://x.vn/p"]
+
+
+def test_main_lenh_ncc_khong_doi_khoang_ngay(monkeypatch):
+    """`hdtool ncc` làm việc trên sổ đã có, không cần --from/--to.
+
+    Phải vá vào _COMMANDS (dict giữ tham chiếu hàm trực tiếp) chứ vá thuộc tính
+    module thì main() vẫn gọi hàm thật.
+    """
+    goi = {}
+    monkeypatch.setattr(cli, "_load_settings", _settings)
+
+    def gia(settings, args):
+        goi["chay"] = True
+        return 0
+
+    monkeypatch.setitem(cli._COMMANDS, "ncc", gia)
+    assert cli.main(["ncc"]) == 0
+    assert goi["chay"] is True

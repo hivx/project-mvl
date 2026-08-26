@@ -89,6 +89,11 @@ def build_parser() -> argparse.ArgumentParser:
     add_period(sp_reorg)
     sp_reorg.add_argument("--include-suspect", action="store_true")
 
+    sp_ncc = sub.add_parser(
+        "ncc", help="Xem cách tải theo nhà cung cấp + hóa đơn chỉ-link đang chờ")
+    sp_ncc.add_argument("--tai", action="store_true",
+                        help="Thử tải lại các dòng đang chờ trong sổ (dùng mã đã điền)")
+
     return p
 
 
@@ -179,6 +184,66 @@ def _dong_so(c, msg, settings: Settings):
         ma_tra_cuu=ma or "",
         link_tra_cuu=links[0] if links else "",
     )
+
+
+def cmd_ncc(settings: Settings, args) -> int:
+    """Xem sổ NCC + hóa đơn chỉ-link đang chờ; ``--tai`` thử tải lại.
+
+    Không đụng IMAP: mọi thứ cần thiết (link, mã) đã nằm sẵn trong sổ, nên chạy
+    được cả khi hộp thư đang trục trặc — và dùng đúng mã người dùng gõ tay.
+    """
+    from types import SimpleNamespace as _NS
+
+    from . import ncc
+
+    so_path = settings.data_dir / "so-hoa-don-cho-tai.csv"
+    entries = ncc.load_registry(NCC_REGISTRY)
+    rows = worklist.load(so_path)
+
+    print("== NCC ĐÃ CÓ CÁCH TẢI ==")
+    for e in entries:
+        if e.tai:
+            cach = "công thức"
+        elif e.dung_adapter:
+            cach = f"adapter {e.dung_adapter}"
+        else:
+            cach = "phải dò lại mỗi lần"
+        print(f"  {e.ten:28s} {cach}")
+    if not entries:
+        print("  (chưa có mục nào — tool sẽ tự ghi sau lần dò thành công đầu tiên)")
+
+    cho = [r for r in rows.values() if r.trang_thai != "đã tải"]
+    print(f"\n== ĐANG CHỜ: {len(cho)} hóa đơn ==")
+    for r in cho:
+        print(f"  {r.ncc[:26]:26s} | {r.trang_thai:18s} | {r.chan_doan}")
+
+    if not getattr(args, "tai", False):
+        return 0
+
+    print("\n→ Thử tải lại các dòng đang chờ…")
+    cap_nhat = []
+    for r in cho:
+        if not r.link_tra_cuu:
+            continue
+        res = portal_probe.fetch_link_only([r.link_tra_cuu], r.ma_tra_cuu or None,
+                                           registry_path=NCC_REGISTRY)
+        if res.files:
+            # _peek_company_date đọc candidate.internal_date -> shim, không có mail ở đây.
+            company, ngay = _peek_company_date(res.files, _NS(internal_date=None), settings)
+            dest = invoice_dir(settings.data_dir, company, ngay, _extract_email(r.nguoi_gui))
+            saved = save_invoice_files(res.files, dest)
+            where = saved.get("xml") or saved.get("pdf")
+            r.trang_thai, r.file, r.chan_doan = "đã tải", str(where or ""), ""
+            print(f"  ✓ {r.ncc} -> {r.file}")
+        else:
+            r.trang_thai = portal_probe.trang_thai(res)
+            r.chan_doan = res.chan_doan
+        cap_nhat.append(r)
+    if cap_nhat:
+        worklist.upsert(so_path, cap_nhat)
+        da_tai = sum(1 for r in cap_nhat if r.trang_thai == "đã tải")
+        print(f"\nTải thêm được {da_tai}/{len(cap_nhat)} hóa đơn. Sổ: {so_path}")
+    return 0
 
 
 def cmd_collect(settings: Settings, args) -> int:
@@ -401,7 +466,7 @@ def cmd_run(settings: Settings, args) -> int:
 
 
 _COMMANDS = {"scan": cmd_scan, "collect": cmd_collect, "report": cmd_report,
-             "run": cmd_run, "reorganize": cmd_reorganize}
+             "run": cmd_run, "reorganize": cmd_reorganize, "ncc": cmd_ncc}
 
 
 def main(argv: Optional[list] = None) -> int:
@@ -412,7 +477,9 @@ def main(argv: Optional[list] = None) -> int:
         from .interactive import run_interactive
         return run_interactive(settings)
     args = build_parser().parse_args(argv)
-    args.from_date, args.to_date = resolve_period(args.from_date, args.to_date, settings)
+    # `ncc` làm việc trên sổ đã có (link + mã nằm sẵn trong CSV) nên không cần kỳ.
+    if hasattr(args, "from_date"):
+        args.from_date, args.to_date = resolve_period(args.from_date, args.to_date, settings)
     return _COMMANDS[args.command](settings, args)
 
 
