@@ -13,7 +13,7 @@ import re
 import time
 from dataclasses import dataclass, field
 from typing import Optional
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 import requests
 
@@ -201,7 +201,7 @@ def probe(url: str, ma: Optional[str] = None, session_factory=None) -> ProbeResu
             form = find_form(html, url)
             if not form or not ma:
                 return ProbeResult([], None, kind, "trang cần nhập mã nhưng không có mã")
-            for ten, gia_tri in list(form["fields"].items()):
+            for ten, gia_tri in form["fields"].items():
                 if not gia_tri and MA_INPUT.search(ten):
                     form["fields"][ten] = ma
             resp = (session.post(form["action"], data=form["fields"], timeout=30)
@@ -224,17 +224,57 @@ def probe(url: str, ma: Optional[str] = None, session_factory=None) -> ProbeResu
         return ProbeResult([], None, "error", f"lỗi mạng: {exc}")
 
 
-def fetch_link_only(links: list, ma: Optional[str] = None,
-                    session_factory=None) -> ProbeResult:
-    """Adapter code sẵn có trước (nhanh, đã kiểm chứng), không được thì mới dò."""
+def fetch_link_only(links: list, ma: Optional[str] = None, session_factory=None,
+                    registry_path=None) -> ProbeResult:
+    """Công thức đã học -> adapter code sẵn có -> dò. Dò xong thì HỌC.
+
+    Công thức hỏng (cổng đổi URL) không dừng lại ở đó mà rơi xuống nhánh dò để
+    học lại rồi ghi đè registry — tự chữa lành, không cần ai can thiệp.
+    """
+    from datetime import date as _date
+
+    from . import ncc
     from .adapters import try_fetch_links
+    from .adapters.registry_adapter import RegistryAdapter
+
+    entries = ncc.load_registry(registry_path) if registry_path else []
+    for url in links or []:
+        entry = ncc.match(entries, url)
+        if entry and entry.tai and ma:
+            files = RegistryAdapter(entry, session_factory).fetch(url, ma)
+            if accept_files(files):
+                return ProbeResult(files, ncc.build_url(entry, ma), "cong-thuc")
+            break                       # công thức hỏng -> xuống dò để học lại
 
     files = try_fetch_links(links or [], ma)
     if files and accept_files(files):
         return ProbeResult(files, (links or [None])[0], "adapter")
+
     res = ProbeResult([], None, "error", "không có link tra cứu")
     for url in (links or [])[:2]:
         res = probe(url, ma, session_factory)
         if res.files:
+            if registry_path and res.download_url and ma:
+                moi = ncc.learn(res.download_url, ma, ten=urlparse(url).netloc,
+                                ngay=str(_date.today()))
+                entries = [e for e in entries if not ncc.match([e], url)] + [moi]
+                ncc.save_registry(registry_path, entries)
             break
     return res
+
+
+def trang_thai(res: ProbeResult) -> str:
+    """Nhãn Trạng thái cho sổ — phải phản ánh CHỖ TẮC THẬT, không phải triệu chứng.
+
+    Một trang meinvoice bóc được mã nhưng bị captcha chặn thì trạng thái là
+    "cần trình duyệt", không phải "thiếu mã".
+    """
+    if res.files:
+        return "đã tải"
+    if res.page_kind in ("captcha", "spa"):
+        return "cần trình duyệt"
+    if res.page_kind == "form":
+        return "thiếu mã"
+    if "không có link" in (res.chan_doan or ""):
+        return "không có link"
+    return "chưa tải được"

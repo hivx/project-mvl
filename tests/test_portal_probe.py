@@ -83,7 +83,7 @@ def test_accept_files_tu_choi_pdf_don_doc():
 
 import pytest  # noqa: E402
 
-from hdtool.portal_probe import probe  # noqa: E402
+from hdtool.portal_probe import ProbeResult, probe  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
@@ -214,3 +214,66 @@ def test_classify_tren_trang_that(ten, mong_doi):
     """
     html = (FIXTURES / "portals" / ten).read_text(encoding="utf-8", errors="replace")
     assert classify_page(200, "text/html", html) == mong_doi
+
+
+def test_trang_thai_phan_anh_dung_cho_tac_thuc_su():
+    """Cột Trạng thái là thứ người dùng đọc trước — không được ghi 'thiếu mã'
+    cho một trang thực ra bị chặn bởi captcha."""
+    from hdtool.portal_probe import trang_thai
+    assert trang_thai(ProbeResult(page_kind="captcha", chan_doan="có captcha")) == "cần trình duyệt"
+    assert trang_thai(ProbeResult(page_kind="spa", chan_doan="trang SPA")) == "cần trình duyệt"
+    assert trang_thai(ProbeResult(page_kind="form",
+                                  chan_doan="trang cần nhập mã nhưng không có mã")) == "thiếu mã"
+    assert trang_thai(ProbeResult(page_kind="error",
+                                  chan_doan="không có link tra cứu")) == "không có link"
+    assert trang_thai(ProbeResult(page_kind="links",
+                                  chan_doan="không tìm thấy link tải dùng được")) == "chưa tải được"
+    assert trang_thai(ProbeResult(files=[object()], page_kind="links")) == "đã tải"
+
+
+# ------------------------------------------------- fetch_link_only + tự học (T42)
+
+def test_do_thanh_cong_thi_hoc_va_ghi_registry(tmp_path):
+    """Dò ra link tải -> ghi công thức vào registry để lần sau đi tắt."""
+    from hdtool.ncc import load_registry
+    from hdtool.portal_probe import fetch_link_only
+
+    reg = tmp_path / "ncc.yaml"
+    sess = FakeSession({
+        "https://x.vn/p": FakeResp(HTML_TRANG, headers=CT_HTML),
+        "https://x.vn/dl?Code=ABC123&Type=xml": FakeResp(XML_OK, headers=CT_XML),
+    })
+    res = fetch_link_only(["https://x.vn/p"], "ABC123", lambda: sess, registry_path=reg)
+    assert res.files
+    hoc = load_registry(reg)
+    assert hoc[-1].tai["xml"] == "https://x.vn/dl?Code={ma}&Type=xml"
+
+
+def test_cong_thuc_hong_thi_ro_xuong_do_va_hoc_lai(tmp_path):
+    """Cổng đổi URL -> công thức cũ hỏng -> tự dò lại và cập nhật. Tự chữa lành."""
+    from hdtool.ncc import learn, load_registry, save_registry
+    from hdtool.portal_probe import fetch_link_only
+
+    reg = tmp_path / "ncc.yaml"
+    save_registry(reg, [learn("https://x.vn/cu?Code=OLD", "OLD", ten="x.vn")])
+    sess = FakeSession({
+        "https://x.vn/cu?Code=ABC123": FakeResp(b"<html>404</html>", headers=CT_HTML),
+        "https://x.vn/p": FakeResp(b'<a href="/moi?Code=ABC123&Type=xml">Tai XML</a>',
+                                   headers=CT_HTML),
+        "https://x.vn/moi?Code=ABC123&Type=xml": FakeResp(XML_OK, headers=CT_XML),
+    })
+    res = fetch_link_only(["https://x.vn/p"], "ABC123", lambda: sess, registry_path=reg)
+    assert res.files
+    assert "moi?Code={ma}" in load_registry(reg)[-1].tai["xml"]
+
+
+def test_di_tat_bang_cong_thuc_khong_dung_toi_trang_tra_cuu(tmp_path):
+    from hdtool.ncc import learn, save_registry
+    from hdtool.portal_probe import fetch_link_only
+
+    reg = tmp_path / "ncc.yaml"
+    save_registry(reg, [learn("https://x.vn/dl?Code=OLD", "OLD", ten="x.vn")])
+    sess = FakeSession({"https://x.vn/dl?Code=ABC123": FakeResp(XML_OK, headers=CT_XML)})
+    res = fetch_link_only(["https://x.vn/p"], "ABC123", lambda: sess, registry_path=reg)
+    assert res.page_kind == "cong-thuc"
+    assert "https://x.vn/p" not in sess.calls      # KHÔNG đụng trang tra cứu

@@ -7,16 +7,19 @@ import sys
 from datetime import date
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlparse
 
-from .adapters import try_fetch_links
-from .collect import extract_links, invoice_dir, invoice_files, save_invoice_files
+from . import lookup, portal_probe, worklist
+from .collect import (_body_text, extract_links, invoice_dir, invoice_files,
+                      save_invoice_files)
 from .config import Settings, load_settings
 from .manifest import filter_uncollected, load_manifest, mark_collected, save_manifest
 from .parse_xml import InvoiceParseError, parse_invoice_xml
 from .pipeline import build_report, write_report
-from .reports import write_candidates_csv, write_manual_links_csv
+from .reports import write_candidates_csv
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+NCC_REGISTRY = PROJECT_ROOT / "config" / "ncc-registry.yaml"
 
 
 def _isodate(s: str) -> date:
@@ -152,11 +155,38 @@ def cmd_scan(settings: Settings, args) -> int:
     return 0
 
 
+def _dong_so(c, msg, settings: Settings):
+    """Dựng một dòng sổ cho email chỉ-link: chọn link tra cứu + bóc mã.
+
+    Mã tìm trong TIÊU ĐỀ trước rồi mới tới thân mail — ehoadon ghi "MTC: <mã>"
+    ngay ở tiêu đề. ``_body_text`` gộp cả text/plain lẫn text/html (collect.py)
+    nên truyền cùng chuỗi cho hai tham số của ``find_code`` là đủ.
+    """
+    links = lookup.rank_links(
+        extract_links(msg, settings.classifier.issuer_domains + ["tracuu", "hoadon"]),
+        c.sender, settings.classifier.issuer_domains)
+    than = _body_text(msg)
+    ma = (lookup.code_from_url(links[0]) if links else None) \
+        or lookup.find_code(c.subject or "", "") \
+        or lookup.find_code(than, than)
+    return worklist.WorkRow(
+        message_id=c.message_id,
+        ngay_mail=str(c.internal_date or ""),
+        hop_thu=c.account,
+        nguoi_gui=c.sender,
+        tieu_de=c.subject,
+        ncc=urlparse(links[0]).netloc if links else "",
+        ma_tra_cuu=ma or "",
+        link_tra_cuu=links[0] if links else "",
+    )
+
+
 def cmd_collect(settings: Settings, args) -> int:
     from .mailscan import MailScanner
     manifest_path = settings.data_dir / ".collected.json"
     manifest = load_manifest(manifest_path)
     need_manual = []
+    so_rows = []
     errors = []
     saved_count = 0
     for account in settings.accounts:
@@ -174,19 +204,29 @@ def cmd_collect(settings: Settings, args) -> int:
                 try:
                     msg = scanner.fetch_message(c.uid)
                     files = invoice_files(msg)
+                    row = None
                     if not files:
-                        links = extract_links(msg, settings.classifier.issuer_domains + ["tracuu", "hoadon"])
-                        portal_files = try_fetch_links(links)  # empty registry -> [] -> manual
-                        if not portal_files:
-                            need_manual.append((c, links))
+                        row = _dong_so(c, msg, settings)
+                        res = portal_probe.fetch_link_only(
+                            [row.link_tra_cuu] if row.link_tra_cuu else [],
+                            row.ma_tra_cuu or None,
+                            registry_path=NCC_REGISTRY)
+                        if not res.files:
+                            row.trang_thai = portal_probe.trang_thai(res)
+                            row.chan_doan = res.chan_doan
+                            so_rows.append(row)
+                            need_manual.append((c, [row.link_tra_cuu] if row.link_tra_cuu else []))
                             continue
-                        files = portal_files
+                        files = res.files
                     company, ngay = _peek_company_date(files, c, settings)
                     dest = invoice_dir(settings.data_dir, company, ngay, _extract_email(c.sender))
                     saved = save_invoice_files(files, dest)
                     mark_collected(manifest, c.message_id, saved)
                     saved_count += 1
                     where = saved.get("xml") or saved.get("pdf") or saved.get("zip")
+                    if row is not None:                 # hóa đơn chỉ-link vừa tải được
+                        row.trang_thai, row.file, row.chan_doan = "đã tải", str(where), ""
+                        so_rows.append(row)
                     print(f"  ✓ {c.subject[:50]} -> {where}")
                 except Exception as exc:  # noqa: BLE001 - keep going on any single email
                     errors.append((c, str(exc)))
@@ -195,12 +235,15 @@ def cmd_collect(settings: Settings, args) -> int:
             save_manifest(manifest_path, manifest)   # persist progress per account
             scanner.close()
     if need_manual:
-        print(f"\n⚠ {len(need_manual)} hóa đơn chỉ có LINK (cần adapter / tải tay):")
+        print(f"\n⚠ {len(need_manual)} hóa đơn chỉ có LINK chưa tải được:")
         for c, links in need_manual:
             print(f"  - [{c.account}] {c.sender} | {c.subject[:45]} | {links or 'không thấy link'}")
-        links_csv = settings.data_dir / f"can-tai-tay-{args.from_date}_{args.to_date}.csv"
-        write_manual_links_csv(need_manual, links_csv)
-        print(f"→ Danh sách 'cần tải tay' đã ghi: {links_csv}")
+    if so_rows:
+        so = settings.data_dir / "so-hoa-don-cho-tai.csv"
+        worklist.upsert(so, so_rows)
+        da_tai = sum(1 for r in so_rows if r.trang_thai == "đã tải")
+        print(f"→ Sổ hóa đơn chỉ-link: {so}"
+              f" ({len(so_rows)} dòng cập nhật, {da_tai} tải tự động được)")
     if errors:
         print(f"\n✗ {len(errors)} email lỗi khi tải (bỏ qua, không làm sập batch):")
         for c, msg in errors[:20]:
