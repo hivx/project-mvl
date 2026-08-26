@@ -16,7 +16,7 @@ _CODE_PARAMS = ("code", "ma", "matracuu", "mst", "key", "id", "token", "hash", "
 #: Nhãn đứng trước mã trong nội dung mail (chịu được thiếu dấu tiếng Việt).
 _CODE_LABELS = (r"M[ãa]\s+tra\s+c[ứu]u", r"M[ãa]\s+nh[ậa]n\s+h[óo]a\s+[đd]\S*n",
                 r"M[ãa]\s+s[ốo]\s+b[íi]\s+m[ậa]t", r"M[ãa]\s+b[ảa]o\s+m[ậa]t",
-                r"M[ãa]\s+H[ĐD]", r"Lookup\s+code", r"Code")
+                r"M[ãa]\s+H[ĐD]", r"MTC", r"Lookup\s+code", r"Code")
 
 #: Hình dạng mã: 6–24 ký tự, CHỮ HOA + số + _ - (đủ để loại chữ tiếng Việt).
 _CODE_SHAPE = r"[A-Z0-9][A-Z0-9_-]{5,23}"
@@ -26,9 +26,15 @@ _IMG_EXT = (".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".css", ".js")
 
 
 def code_from_url(url: str) -> Optional[str]:
-    """Mã nằm ngay trong query của URL (?Code=/?ma=/?c=…)."""
+    """Mã trong URL: ưu tiên query (?Code=/?ma=/?c=…), rồi tới path.
+
+    ehoadon đặt mã thẳng vào path (``tracuu.ehoadon.vn/UTAWCE3X5A5``) nên chỉ
+    đọc query là trượt. Đoạn path chỉ được nhận khi khớp đúng dáng mã (CHỮ HOA +
+    số) — ``/tra-cuu`` hay ``/DownloadHandler.ashx`` có chữ thường nên không dính.
+    """
     try:
-        qs = parse_qs(urlparse(url or "").query)
+        parsed = urlparse(url or "")
+        qs = parse_qs(parsed.query)
     except ValueError:
         return None
     for key, values in qs.items():
@@ -37,7 +43,8 @@ def code_from_url(url: str) -> Optional[str]:
                 v = v.strip()
                 if re.fullmatch(_CODE_SHAPE, v):
                     return v
-    return None
+    duoi = parsed.path.rstrip("/").rsplit("/", 1)[-1]
+    return duoi if re.fullmatch(_CODE_SHAPE, duoi) else None
 
 
 def find_code(text: str, html: str = "") -> Optional[str]:

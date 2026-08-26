@@ -39,3 +39,18 @@ def test_rank_links_uu_tien_link_co_ma_va_domain_nha_phat_hanh():
 def test_rank_links_loai_anh_va_unsubscribe():
     urls = ["https://x.vn/a.jpg", "https://x.vn/unsubscribe?u=1", "mailto:a@x.vn"]
     assert rank_links(urls, "a@x.vn", []) == []
+
+
+def test_code_from_url_lay_ma_nam_trong_path():
+    """ehoadon: tracuu.ehoadon.vn/UTAWCE3X5A5 — mã ở PATH, không phải query."""
+    assert code_from_url("http://tracuu.ehoadon.vn/UTAWCE3X5A5") == "UTAWCE3X5A5"
+
+
+def test_code_from_url_khong_nham_path_thuong():
+    assert code_from_url("https://www.meinvoice.vn/tra-cuu") is None
+    assert code_from_url("https://meinvoice.vn/tra-cuu/DownloadHandler.ashx") is None
+
+
+def test_find_code_nhan_nhan_MTC():
+    """Tiêu đề ehoadon: 'Hóa đơn số 00005596 - MTC: UTAWCE3X5A5 của …'."""
+    assert find_code("Hóa đơn số 00005596 - MTC: UTAWCE3X5A5 của CÔNG TY") == "UTAWCE3X5A5"
