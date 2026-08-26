@@ -148,13 +148,32 @@ def invoice_dir(base_dir, company: str, ngay_lap: Optional[date], sender_email: 
     return Path(base_dir) / comp / period / sender
 
 
+def _unique_target(dest: Path, filename: str, data: bytes) -> Path:
+    """Đường dẫn ghi được: trùng tên mà KHÁC nội dung thì thêm -2, -3…
+
+    Cùng người gửi, cùng tháng, hai hóa đơn cùng tên ``hoadon.xml`` là chuyện
+    thường -> ghi đè là mất hóa đơn. Trùng cả nội dung thì trả lại chính file cũ
+    để tải lại không đẻ bản sao (giữ tính idempotent của collect).
+    """
+    target = dest / filename
+    if not target.exists() or target.read_bytes() == data:
+        return target
+    stem, suffix = target.stem, target.suffix
+    n = 2
+    while True:
+        cand = dest / f"{stem}-{n}{suffix}"
+        if not cand.exists() or cand.read_bytes() == data:
+            return cand
+        n += 1
+
+
 def save_invoice_files(files: list[Attachment], dest_dir) -> dict:
     """Write invoice files into ``dest_dir`` and return {kind: path}."""
     dest = Path(dest_dir)
     dest.mkdir(parents=True, exist_ok=True)
     saved: dict = {}
     for a in files:
-        target = dest / a.filename
+        target = _unique_target(dest, a.filename, a.data)
         target.write_bytes(a.data)
         saved.setdefault(a.kind, target)
     return saved
