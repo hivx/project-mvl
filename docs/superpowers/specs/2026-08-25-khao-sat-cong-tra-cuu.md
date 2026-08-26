@@ -102,3 +102,45 @@ tháng này qua tháng khác**, nên vượt được một lần là dùng mãi
 Hạ tầng T38–T43 **không phí**: nhánh trình duyệt vẫn dùng lại nguyên `worklist`
 (sổ), `ncc` (registry), `accept_files` (chốt xác minh) và
 `candidate_download_links`. Nhưng thứ tự ưu tiên nên được xem lại.
+
+
+---
+
+## ĐÍNH CHÍNH 2026-08-26 — meinvoice KHÔNG bị captcha chặn, tự động được bằng HTTP
+
+Người dùng phản hồi "vào web không thấy captcha". Đọc lại thì **kết luận captcha
+ở trên là SAI**, do `classify_page` chỉ khớp chuỗi con:
+
+- Khối captcha có tồn tại trong DOM nhưng **`style="display:none;"`**. JS chỉ bật
+  khi server trả `needCaptcha` (dự phòng chống cào), mặc định KHÔNG hỏi.
+- `DownloadHandler.ashx` không đọc mã từ URL thật — nó cần lệnh gọi xác thực
+  trước, và cần token thời gian `ext=` xin ở `tra-cuu/GetRequestTimeEnCode`
+  (JS dựng link với chuỗi `expiredtime` rồi thay token tươi vào lúc bấm).
+  Thiếu thứ đó thì trả **200 + 0 byte, im lặng** — đó là file 0Kb.
+
+**Nhưng không cần `DownloadHandler` chút nào.** Một lệnh gọi là đủ:
+
+```
+POST https://www.meinvoice.vn/tra-cuu/GetInvoiceDataByTransactionID
+Content-Type: application/x-www-form-urlencoded      <-- BẮT BUỘC form, gửi JSON -> 500
+transactionID=<mã sc lấy từ email>&isReceiveEmail=false&email=
+
+-> {"success": true, "data": "<?xml …><HDon>…</HDon>"}
+```
+
+XML nằm thẳng trong trường `data`. Kiểm chứng thật 2026-08-26, 3/4 mã parse ra
+hóa đơn hợp lệ:
+
+| Mã (sc) | Hóa đơn | Bên bán | Tổng |
+|---|---|---|---|
+| `1ZFZUNLNW3P8` | 00010676 C26MHT 2026-07-14 | TUẤN KIỆT VIỆT NAM | 1.039.600 |
+| `DQFDSLQ3R9Z8` | 00003257 C26MCS 2026-06-25 | LÀNG HẢI SẢN CÂY SUNG | 799.200 |
+| `A9FESJZXNP0E` | 00008583 C26MCU 2026-06-15 | CG GLOBAL | 803.520 |
+| `0XFAUDLRE_7N` | trả về nội dung KHÔNG phải HĐ chuẩn TCT — `accept_files` từ chối đúng |
+
+Ba tờ đầu chính là nhóm từng bị xếp "cần trình duyệt". **Nhánh Playwright
+(T51–T53) nhiều khả năng không còn cần cho meinvoice.**
+
+**Bài học:** đừng phán loại trang bằng cách grep chuỗi trong HTML. Trang tra cứu
+dựng bằng JS đóng gói ở CDN (`meinvoice.misacdn.net/MISA.CDN.WebResource.axd`) —
+tải bundle đó về đọc thì ra hết endpoint, rẻ hơn nhiều so với dựng cả trình duyệt.
