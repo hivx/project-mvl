@@ -186,6 +186,32 @@ tiên quyết — cổng chưa từng gặp vẫn tải được ngay lần đ�
 
 Thứ tự: **T37 → T44 → T38 → T39 → T40 → T41 → T42 → T43 → T45**.
 
+## Đợt 8 — Gỡ vướng mắc tải hóa đơn + phạm vi hộp thư
+
+Spec: `docs/superpowers/specs/2026-08-26-go-vuong-mac-tai-hoa-don.md`
+
+Soi 67 dòng "chưa tải được" của Đợt 7 thì ra chúng **không cùng loại vấn đề**:
+51 dòng captcha/SPA, 5 dòng SMBC (zip mã hóa), 2 dòng bản Re: đã có bản gốc,
+9 dòng **không phải hóa đơn**.
+
+- [x] **T47 — Phạm vi hộp thư**: `mailboxes` trong settings.yaml (hộp thư → công
+  ty) + `accounts_for()`. Chọn miyano thì chỉ quét 2 hộp của miyano. Hộp CHƯA
+  khai vẫn quét cho mọi công ty (thà thừa còn hơn sót). Thư mục/bảng kê VẪN theo
+  MST bên mua; hóa đơn lạc công ty được cảnh báo. Kèm sửa `cmd_run` không truyền
+  company/format xuống report.
+- [x] **T48 — Lọc nhiễu**: thêm `exclude_subjects` bên cạnh `exclude_senders`.
+  Cần lọc theo TIÊU ĐỀ vì `hoadondientu@vnpt-invoice.vn` là nhà phát hành thật —
+  chặn cả người gửi sẽ đánh rơi hóa đơn VNPT chỉ-link.
+- [x] **T49 — Bản Re:/Fwd: trùng**: tiêu đề (bỏ tiền tố) khớp hóa đơn đã có →
+  trạng thái "trùng bản gốc" kèm đường dẫn, thay vì báo thiếu.
+- [x] **T50 — SMBC zip mã hóa**: `zipmail.py` ghép cặp email-zip với
+  email-mật-khẩu theo tiêu đề chuẩn hóa rồi giải nén. ZipCrypto cũ nên `zipfile`
+  thư viện chuẩn làm được, **không thêm phụ thuộc**. Kèm sửa `manifest`: mục CHỈ
+  có zip nghĩa là chưa giải nén được → chưa coi là đã tải (nếu không thì 7 hóa
+  đơn SMBC mắc kẹt vĩnh viễn).
+- [ ] **T51–T53 — Nhánh trình duyệt (Playwright)** cho 51 dòng captcha/SPA.
+- [ ] **T54 — Chạy thật + tài liệu** cho toàn Đợt 8.
+
 ## Ghi chú
 
 - T11 là phần fragile duy nhất, không làm mù được — chờ email thật.

@@ -50,6 +50,34 @@ hdtool run     --from 2026-06-01 --to 2026-06-30 -o bang-ke-062026.xlsx
 - **Tổng hợp theo thuế suất**: gom 10/8/5/0/KCT/KKKNT → số kê khai GTGT.
 - **Bỏ qua**: hóa đơn ngoài kỳ, sai bên mua, XML lỗi (cần xem lại/nhập tay).
 
+## Chạy cho một công ty
+
+Khai hộp thư nào thuộc công ty nào trong `config/settings.yaml`:
+
+```yaml
+mailboxes:
+  info@miyano.com.vn:         miyano
+  mvl.invoices2024@gmail.com: miyano
+  anh.doan@medcons.vn:        medcons
+```
+
+Chọn công ty ở menu (hoặc `--company`) thì tool **chỉ kết nối hộp thư của công ty
+đó**. Hộp thư chưa khai vẫn được quét cho mọi công ty — thà quét thừa còn hơn sót.
+
+Thư mục lưu và bảng kê **vẫn chia theo MST bên mua** đọc từ XML, không theo hộp
+thư — đó mới là căn cứ đúng luật. Hóa đơn tải từ hộp thư công ty này nhưng bên
+mua là công ty khác sẽ được **cảnh báo** để bạn rà lại.
+
+## Hóa đơn gửi trong ZIP có mật khẩu
+
+Một số nhà cung cấp (SMBC eInvoice) gửi **mỗi hóa đơn bằng hai email cùng tiêu
+đề**: một email mang `invoice.zip` đã mã hóa, một email mang dòng
+`Password unzip file: …`. Tool tự ghép cặp theo tiêu đề (bỏ tiền tố `Fwd:`/`Re:`)
+rồi giải nén — không cần bạn làm gì.
+
+Không tìm thấy email chứa mật khẩu thì dòng sổ ghi **"thiếu mật khẩu zip"**; dán
+mật khẩu vào cột `Mã tra cứu` rồi chạy lại.
+
 ## Hóa đơn chỉ có link tra cứu
 
 Nhiều nhà cung cấp không đính kèm file mà chỉ gửi **link tra cứu + mã**. Tool tự

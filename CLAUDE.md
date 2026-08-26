@@ -18,7 +18,11 @@ Thiết kế chi tiết: `docs/superpowers/specs/2026-07-07-invoice-email-aggreg
    có PDF → đánh dấu "cần nhập tay/OCR", không suy diễn số.
 3. **Không commit bí mật.** `.env` chứa app password, đã nằm trong `.gitignore`.
    Trước khi commit luôn kiểm tra `git status` không có `.env`.
-4. **Cấu hình, không hardcode.** Danh sách nhà phát hành, từ khóa, whitelist,
+4. **Chạy công ty nào chỉ quét hộp thư công ty đó.** Khai `mailboxes` trong
+   `config/settings.yaml`. Hộp thư CHƯA khai vẫn được quét cho mọi công ty — thà
+   quét thừa còn hơn sót hóa đơn. Thư mục và bảng kê VẪN chia theo **MST bên
+   mua** đọc từ XML (đúng luật), không theo hộp thư.
+5. **Cấu hình, không hardcode.** Danh sách nhà phát hành, từ khóa, whitelist,
    độ nới ngày nằm trong `config/settings.yaml`. Sửa ở đó, không sửa code.
 
 ## Cấu trúc
@@ -37,6 +41,7 @@ src/hdtool/
   portal_probe.py# dò cổng: phân loại trang, đọc form, tìm link tải, XÁC MINH
   ncc.py         # registry công thức tải theo NCC (bộ nhớ đệm của quy trình dò)
   worklist.py    # sổ HĐ chỉ-link tích lũy (CSV, người dùng sửa tay được)
+  zipmail.py     # HĐ trong zip MÃ HÓA: ghép email-zip với email-mật-khẩu theo tiêu đề
   adapters/      # adapter code cho cổng phức tạp + registry_adapter (dựng từ YAML)
   aggregate.py   # khử trùng, thay thế, lọc mua-vào, gom thuế suất; only_company
   reports.py     # xuất danh sách ứng viên/nghi ngờ (CSV)
