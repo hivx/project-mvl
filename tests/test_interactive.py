@@ -89,3 +89,20 @@ def test_menu_thu_tai_hd_chi_link_truoc_khi_tong_hop(monkeypatch):
                  company="miyano", fmt="csv")
     _default_execute(None, ch, "/tmp/x.csv", lambda *_: None)
     assert thu_tu == ["collect", "ncc:True", "report"]
+
+
+def test_menu_truyen_cong_ty_da_chon_xuong_collect(monkeypatch):
+    """Chọn miyano ở menu -> collect phải nhận company='miyano' để giới hạn hộp thư."""
+    from datetime import date
+
+    from hdtool import cli
+    from hdtool.interactive import Choices, _default_execute
+
+    nhan = {}
+    monkeypatch.setattr(cli, "cmd_collect", lambda s, a: nhan.update(c=a.company) or 0)
+    monkeypatch.setattr(cli, "cmd_ncc", lambda s, a: 0)
+    monkeypatch.setattr(cli, "cmd_report", lambda s, a: 0)
+    ch = Choices(from_date=date(2026, 6, 1), to_date=date(2026, 6, 30),
+                 company="miyano", fmt="csv")
+    _default_execute(None, ch, "/tmp/x.csv", lambda *_: None)
+    assert nhan["c"] == "miyano"

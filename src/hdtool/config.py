@@ -29,6 +29,7 @@ class Settings:
     accounts: list[Account]
     buyer_msts: set[str]
     companies: dict[str, str]          # MST bên mua -> tên công ty (folder)
+    mailboxes: dict[str, str]          # hộp thư -> công ty (rỗng = quét cho mọi công ty)
     classifier: ClassifierConfig
     pad_before_days: int
     pad_after_days: int
@@ -79,6 +80,8 @@ def _build_companies(env: dict, cfg: dict) -> dict[str, str]:
 
 def build_settings(env: dict, cfg: dict, data_dir: Optional[Path] = None) -> Settings:
     companies_map = _build_companies(env, cfg)
+    mailboxes = {str(k).strip().lower(): str(v).strip()
+                 for k, v in (cfg.get("mailboxes") or {}).items() if str(k).strip()}
     classifier = ClassifierConfig(
         issuer_domains=list(cfg.get("issuer_domains", [])),
         keywords=list(cfg.get("keywords", [])),
@@ -95,6 +98,7 @@ def build_settings(env: dict, cfg: dict, data_dir: Optional[Path] = None) -> Set
         accounts=_parse_accounts(env),
         buyer_msts=set(companies_map),
         companies=companies_map,
+        mailboxes=mailboxes,
         classifier=classifier,
         pad_before_days=int(cfg.get("pad_before_days", 15)),
         pad_after_days=int(cfg.get("pad_after_days", 45)),
@@ -117,3 +121,20 @@ def load_settings(project_root: Path, env: Optional[dict] = None) -> Settings:
         cfg = yaml.safe_load(cfg_path.read_text(encoding="utf-8")) or {}
     environ = env if env is not None else os.environ
     return build_settings(environ, cfg, data_dir=project_root / "data")
+
+
+def accounts_for(settings: Settings, company: Optional[str]) -> list[Account]:
+    """Hộp thư cần quét khi chạy cho ``company``.
+
+    Hộp thư KHÔNG khai trong ``mailboxes`` thì vẫn quét cho mọi công ty — mặc
+    định an toàn: thà quét thừa còn hơn bỏ sót hóa đơn. Không chọn công ty
+    (``company=None``) thì quét tất cả, y như trước khi có tính năng này.
+    """
+    if not company:
+        return list(settings.accounts)
+    ra = []
+    for acc in settings.accounts:
+        thuoc = settings.mailboxes.get(acc.user.strip().lower())
+        if thuoc is None or thuoc == company:
+            ra.append(acc)
+    return ra

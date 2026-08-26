@@ -69,6 +69,8 @@ def build_parser() -> argparse.ArgumentParser:
     add_period(sp_collect)
     sp_collect.add_argument("--include-suspect", action="store_true",
                             help="Tải cả email rổ 'nghi ngờ', không chỉ 'chắc chắn'")
+    sp_collect.add_argument("--company", default=None,
+                            help="Chỉ quét hộp thư của công ty này (xem `mailboxes`)")
 
     sp_report = sub.add_parser("report", help="Parse + tổng hợp ra Excel/CSV")
     add_period(sp_report)
@@ -83,6 +85,8 @@ def build_parser() -> argparse.ArgumentParser:
     add_period(sp_run)
     sp_run.add_argument("--include-suspect", action="store_true")
     sp_run.add_argument("-o", "--output", default=None)
+    sp_run.add_argument("--company", default=None,
+                        help="Chỉ quét hộp thư + tổng hợp cho công ty này")
 
     sp_reorg = sub.add_parser(
         "reorganize", help="Tải lại & sắp xếp hóa đơn theo cấu trúc công ty/tháng/người gửi")
@@ -247,14 +251,22 @@ def cmd_ncc(settings: Settings, args) -> int:
 
 
 def cmd_collect(settings: Settings, args) -> int:
+    from .config import accounts_for
     from .mailscan import MailScanner
+    cong_ty_chon = _resolve_company(getattr(args, "company", None), settings)
+    accounts = accounts_for(settings, cong_ty_chon)
+    if cong_ty_chon:
+        bo_qua = [a.user for a in settings.accounts if a not in accounts]
+        print(f"Công ty '{cong_ty_chon}': quét {len(accounts)} hộp thư"
+              + (f" (bỏ qua {', '.join(bo_qua)})" if bo_qua else ""))
     manifest_path = settings.data_dir / ".collected.json"
     manifest = load_manifest(manifest_path)
     need_manual = []
     so_rows = []
     errors = []
+    lac = []                 # HĐ tải từ hộp thư công ty này nhưng bên mua là công ty khác
     saved_count = 0
-    for account in settings.accounts:
+    for account in accounts:
         scanner = MailScanner(settings, account)
         scanner.connect()
         try:
@@ -289,6 +301,12 @@ def cmd_collect(settings: Settings, args) -> int:
                     mark_collected(manifest, c.message_id, saved)
                     saved_count += 1
                     where = saved.get("xml") or saved.get("pdf") or saved.get("zip")
+                    chu_hop_thu = settings.mailboxes.get(account.user.strip().lower())
+                    if chu_hop_thu and company not in ("", chu_hop_thu, "_khac",
+                                                       "_chua-ro-cong-ty"):
+                        lac.append((c.subject, account.user, chu_hop_thu, company))
+                        print(f"  ⚠ hộp {chu_hop_thu} nhưng bên mua là {company.upper()}"
+                              f" -> {where}")
                     if row is not None:                 # hóa đơn chỉ-link vừa tải được
                         row.trang_thai, row.file, row.chan_doan = "đã tải", str(where), ""
                         so_rows.append(row)
@@ -313,6 +331,11 @@ def cmd_collect(settings: Settings, args) -> int:
         print(f"\n✗ {len(errors)} email lỗi khi tải (bỏ qua, không làm sập batch):")
         for c, msg in errors[:20]:
             print(f"  - [{c.account}] {c.subject[:45]} — {msg}")
+    if lac:
+        print(f"\n⚠ {len(lac)} hóa đơn lạc công ty (hộp thư một đằng, bên mua một nẻo):")
+        for tieu_de, hop, chu, ben_mua in lac[:10]:
+            print(f"  - [{hop}] thuộc {chu}, nhưng bên mua {ben_mua}: {tieu_de[:44]}")
+        print("  (vẫn lưu theo MST bên mua — đúng luật; dòng này chỉ để bạn rà lại)")
     print(f"\nĐã tải {saved_count} hóa đơn có file.")
     return 0
 
@@ -461,6 +484,9 @@ def cmd_run(settings: Settings, args) -> int:
     report_args = argparse.Namespace(
         from_date=args.from_date, to_date=args.to_date,
         output=getattr(args, "output", None), source=None,
+        # Chọn công ty ở collect thì bảng kê cũng phải cho đúng công ty đó.
+        company=getattr(args, "company", None),
+        format=getattr(args, "format", None) or "xlsx",
     )
     return cmd_report(settings, report_args)
 

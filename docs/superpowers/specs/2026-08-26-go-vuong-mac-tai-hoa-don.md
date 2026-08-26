@@ -258,9 +258,11 @@ Ca bắt buộc: email zip đến **trước** email mật khẩu và ngược l
 
 ## 9. Open Questions
 
-1. **Bảng `mailboxes` ở §5.E là đề xuất của tôi, cần bạn xác nhận** — cụ thể
-   `mvl.invoices2024@gmail.com` thuộc **miyano** hay là hộp dùng chung? Hộp này
-   đang chứa nhiều bản forward hóa đơn của medcons.
+1. ~~Bảng `mailboxes` cần xác nhận~~ — **ĐÃ CHỐT 2026-08-26**:
+   `mvl.invoices2024@gmail.com` **chỉ thuộc miyano**. Hệ quả đã chấp nhận: chạy
+   medcons sẽ không quét hộp này, nên các bản forward hóa đơn medcons nằm trong
+   đó bị bỏ qua — chấp nhận được vì bản gốc vẫn ở `anh.doan@medcons.vn`. Cảnh báo
+   "lạc công ty" ở §5.E là cách phát hiện nếu giả định này sai.
 2. meinvoice có giữ phiên sau khi giải captcha lần đầu không? Quyết định 22 lần
    gõ captcha hay 1. Chỉ trả lời được khi chạy thật ở T51.
 3. ViettelPost có bao giờ gửi hóa đơn GTGT thật không? Nếu có thì phải chuyển từ

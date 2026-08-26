@@ -102,3 +102,52 @@ def test_load_settings_reads_repo_defaults():
     # values come from config/settings.yaml checked into the repo
     assert "sinvoice" in s.classifier.issuer_domains
     assert s.pad_after_days == 45
+
+
+# ------------------------------------------- T47: hộp thư thuộc công ty nào
+
+def _env3():
+    return {"IMAP_USER": "info@miyano.com.vn", "IMAP_APP_PASSWORD": "x",
+            "IMAP_USER_2": "anh.doan@medcons.vn", "IMAP_APP_PASSWORD_2": "y",
+            "IMAP_USER_3": "mvl.invoices2024@gmail.com", "IMAP_APP_PASSWORD_3": "z"}
+
+
+def _cfg_mailboxes():
+    return {"mailboxes": {"info@miyano.com.vn": "miyano",
+                          "mvl.invoices2024@gmail.com": "miyano",
+                          "anh.doan@medcons.vn": "medcons"}}
+
+
+def test_nap_mailboxes_tu_settings():
+    s = build_settings(_env3(), _cfg_mailboxes())
+    assert s.mailboxes["mvl.invoices2024@gmail.com"] == "miyano"
+    assert s.mailboxes["anh.doan@medcons.vn"] == "medcons"
+
+
+def test_accounts_for_chi_lay_hop_thu_cua_cong_ty():
+    from hdtool.config import accounts_for
+    s = build_settings(_env3(), _cfg_mailboxes())
+    assert sorted(a.user for a in accounts_for(s, "miyano")) == \
+        ["info@miyano.com.vn", "mvl.invoices2024@gmail.com"]
+    assert [a.user for a in accounts_for(s, "medcons")] == ["anh.doan@medcons.vn"]
+
+
+def test_accounts_for_khong_chon_cong_ty_thi_quet_tat_ca():
+    from hdtool.config import accounts_for
+    s = build_settings(_env3(), _cfg_mailboxes())
+    assert len(accounts_for(s, None)) == 3
+
+
+def test_accounts_for_hop_thu_chua_khai_thi_van_quet():
+    """Mặc định an toàn: thà quét thừa còn hơn mất hóa đơn."""
+    from hdtool.config import accounts_for
+    cfg = {"mailboxes": {"anh.doan@medcons.vn": "medcons"}}   # hai hộp kia chưa khai
+    s = build_settings(_env3(), cfg)
+    users = sorted(a.user for a in accounts_for(s, "miyano"))
+    assert users == ["info@miyano.com.vn", "mvl.invoices2024@gmail.com"]
+
+
+def test_accounts_for_khong_khai_mailboxes_gi_ca_thi_quet_tat_ca():
+    from hdtool.config import accounts_for
+    s = build_settings(_env3(), {})
+    assert len(accounts_for(s, "miyano")) == 3

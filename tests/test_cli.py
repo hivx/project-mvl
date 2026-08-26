@@ -224,3 +224,61 @@ def test_main_lenh_ncc_khong_doi_khoang_ngay(monkeypatch):
     monkeypatch.setitem(cli._COMMANDS, "ncc", gia)
     assert cli.main(["ncc"]) == 0
     assert goi["chay"] is True
+
+
+# ------------------------------------- T47: collect chỉ quét hộp thư của công ty
+
+def test_parser_collect_va_run_co_company():
+    p = build_parser()
+    assert p.parse_args(["collect", "--company", "miyano"]).company == "miyano"
+    assert p.parse_args(["run", "--company", "medcons"]).company == "medcons"
+    assert p.parse_args(["collect"]).company is None
+
+
+def test_cmd_collect_chi_ket_noi_hop_thu_cua_cong_ty_da_chon(monkeypatch, tmp_path):
+    """Chọn miyano -> KHÔNG được đụng tới hộp thư của medcons."""
+    from hdtool.config import build_settings
+
+    env = {"IMAP_USER": "info@miyano.com.vn", "IMAP_USER_2": "anh.doan@medcons.vn",
+           "IMAP_USER_3": "mvl.invoices2024@gmail.com"}
+    cfg = {"mailboxes": {"info@miyano.com.vn": "miyano",
+                         "mvl.invoices2024@gmail.com": "miyano",
+                         "anh.doan@medcons.vn": "medcons"},
+           "companies": {"0109529507": "miyano", "0108186705": "medcons"}}
+    settings = build_settings(env, cfg, data_dir=tmp_path)
+
+    da_ket_noi = []
+
+    class ScannerGia:
+        def __init__(self, s, account):
+            self.account = account
+            self.folder = "INBOX"
+
+        def connect(self):
+            da_ket_noi.append(self.account.user)
+
+        def scan(self, *a):
+            return []
+
+        def close(self):
+            pass
+
+    import hdtool.mailscan as mailscan
+    monkeypatch.setattr(mailscan, "MailScanner", ScannerGia)
+    cli.cmd_collect(settings, SimpleNamespace(
+        from_date=date(2026, 6, 1), to_date=date(2026, 6, 30),
+        include_suspect=False, company="miyano"))
+    assert sorted(da_ket_noi) == ["info@miyano.com.vn", "mvl.invoices2024@gmail.com"]
+    assert "anh.doan@medcons.vn" not in da_ket_noi
+
+
+def test_cmd_run_truyen_company_va_format_xuong_report(monkeypatch):
+    """`run --company medcons` phải tổng hợp cho medcons, không phải cho tất cả."""
+    nhan = {}
+    monkeypatch.setattr(cli, "cmd_collect", lambda s, a: 0)
+    monkeypatch.setattr(cli, "cmd_report",
+                        lambda s, a: nhan.update(company=a.company, fmt=a.format) or 0)
+    cli.cmd_run(_settings(), SimpleNamespace(
+        from_date=date(2026, 6, 1), to_date=date(2026, 6, 30),
+        include_suspect=False, output=None, company="medcons"))
+    assert nhan == {"company": "medcons", "fmt": "xlsx"}
