@@ -87,6 +87,7 @@ def build_settings(env: dict, cfg: dict, data_dir: Optional[Path] = None) -> Set
         keywords=list(cfg.get("keywords", [])),
         whitelist_senders=list(cfg.get("whitelist_senders", [])),
         exclude_senders=list(cfg.get("exclude_senders", [])),
+        exclude_subjects=list(cfg.get("exclude_subjects", [])),
         certain_threshold=int(cfg.get("certain_threshold", 5)),
         suspect_threshold=int(cfg.get("suspect_threshold", 2)),
     )

@@ -85,3 +85,45 @@ def test_records_source_account():
     c = score_email("hoadon@misa.com.vn", "Hóa đơn", has_xml=True, has_pdf=False,
                     has_link=False, cfg=CFG, account="info@miyano.com.vn")
     assert c.account == "info@miyano.com.vn"
+
+
+# ---------------------------------------- T48: lọc theo TIÊU ĐỀ (không phải người gửi)
+
+def _cfg_loai_tru():
+    return ClassifierConfig(
+        issuer_domains=["vnpt", "viettel"],
+        keywords=["hóa đơn", "invoice"],
+        exclude_senders=["viettelpost.com.vn", "accounts.google.com"],
+        exclude_subjects=["cảnh báo đăng nhập", "thông báo tài khoản trả trước"],
+    )
+
+
+def test_loai_theo_tieu_de_du_nguoi_gui_la_nha_phat_hanh_that():
+    """VNPT là nhà phát hành THẬT — chặn cả người gửi sẽ đánh rơi HĐ VNPT chỉ-link.
+    Nên 'Thông báo tài khoản trả trước' phải lọc theo tiêu đề."""
+    c = score_email("EInvoice <hoadondientu@vnpt-invoice.vn>",
+                    "Hóa đơn điện tử VNPT-INVOICE: Thông báo tài khoản trả trước",
+                    has_xml=False, has_pdf=False, has_link=False, cfg=_cfg_loai_tru())
+    assert c.bucket == "ignore"
+
+
+def test_hoa_don_vnpt_that_van_qua_duoc():
+    c = score_email("EInvoice <hoadondientu@vnpt-invoice.vn>",
+                    "VNPT-INVOICE: Thông báo phát hành hóa đơn điện tử",
+                    has_xml=False, has_pdf=False, has_link=True, cfg=_cfg_loai_tru())
+    assert c.bucket != "ignore"
+
+
+def test_co_xml_thi_luon_giu_du_khop_tieu_de_loai_tru():
+    """Luật an toàn sẵn có: email mang XML thì không bao giờ bị loại."""
+    c = score_email("noreply@viettelpost.com.vn",
+                    "(Viettel Post) Cảnh báo đăng nhập tài khoản",
+                    has_xml=True, has_pdf=False, has_link=False, cfg=_cfg_loai_tru())
+    assert c.bucket != "ignore"
+
+
+def test_loai_theo_nguoi_gui_van_hoat_dong():
+    c = score_email("Google <no-reply@accounts.google.com>",
+                    "Security alert for mvl.invoices2024@gmail.com",
+                    has_xml=False, has_pdf=False, has_link=False, cfg=_cfg_loai_tru())
+    assert c.bucket == "ignore"

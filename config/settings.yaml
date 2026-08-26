@@ -70,3 +70,17 @@ whitelist_senders: []
 # không mất HĐ thật). Ví dụ VCBDigibank chỉ gửi "biên lai chuyển tiền".
 exclude_senders:
   - vcbdigibank
+  - viettelpost.com.vn          # bảng kê cước + cảnh báo đăng nhập, không phải HĐ GTGT
+  - accounts.google.com         # cảnh báo bảo mật Google
+  - dichvucongcucthue@gdt.gov.vn   # xác thực tờ khai, không phải hóa đơn
+
+# Tiêu đề KHÔNG BAO GIỜ là HĐ GTGT -> loại khỏi ứng viên. Dùng khi NGƯỜI GỬI là
+# nhà phát hành thật nên không chặn cả người gửi được: chặn
+# hoadondientu@vnpt-invoice.vn sẽ đánh rơi hóa đơn VNPT chỉ-link.
+# Luật an toàn giữ nguyên: email có XML thì LUÔN giữ, dù khớp bộ lọc nào.
+exclude_subjects:
+  - "cảnh báo đăng nhập"
+  - "xác thực thông tin"
+  - "thông báo tài khoản trả trước"
+  - "security alert"
+  - "xác thực tờ khai"
