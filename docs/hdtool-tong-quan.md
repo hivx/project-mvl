@@ -1,6 +1,6 @@
 # hdtool — Tổng quan & lộ trình hoàn thiện
 
-> Cập nhật: **2026-08-25**. Tài liệu "một cửa": đọc file này là nắm được tool
+> Cập nhật: **2026-08-26** (sau Đợt 7). Tài liệu "một cửa": đọc file này là nắm được tool
 > làm gì, đã xong tới đâu, số liệu thực tế hiện tại, còn thiếu gì và nên làm
 > tiếp theo thứ tự nào. Chi tiết từng đợt xem `tasks/plan.md`; thiết kế gốc xem
 > `docs/superpowers/specs/`.
@@ -113,7 +113,7 @@ tải-thẳng trong body email trước** khi kết luận "phải dùng trình 
 
 ## 6. Trạng thái đo được hôm nay (2026-08-25)
 
-**Test:** `164 passed, 1 skipped` (~0.6s). Test duy nhất bị skip là OCR
+**Test:** `227 passed, 1 skipped` (~1.2s). Test duy nhất bị skip là OCR
 end-to-end — thiếu binary `tesseract` trên máy này.
 
 **Dữ liệu đã tải về `data/`:**
@@ -163,9 +163,10 @@ thay đổi nhỏ, test vẫn xanh, nhưng đang lơ lửng ngoài git.
 | `*.einvoice.com.vn` (saigoncoop…) | GET trang → CSRF + `idHoaDon` → POST `/tai-ve-hoa-don` → ZIP | ✅ `einvoice_com_vn.py` |
 | `*-tt78.vnpt-invoice.com.vn` | Link email `getinvoice?token=` trả XML thẳng | ✅ `vnpt_invoice.py` |
 | `einvoice.fast.com.vn` | Link email `index.aspx?type=2&c=&hash=` trả XML thẳng | ✅ `fast_einvoice.py` |
-| meinvoice.vn (MISA) | SPA, endpoint dựng bằng JS mã hóa | ⏳ cần bắt XHR bằng trình duyệt |
-| easyinvoice.com.vn (Thái Sơn) | SPA, `/Invoice/ConvertInv` dựng bằng JS | ⏳ cần bắt XHR bằng trình duyệt |
-| ehoadon.vn | **ReCaptcha** ở trang tra cứu | ❌ cần trình duyệt + nhập tay |
+| `tracuuhoadon.ipos.vn` | Mail kèm `Invoice/Download78?id=` trả XML thẳng | ✅ **dò tự động học được** (Đợt 7) |
+| meinvoice.vn (MISA) | **CAPTCHA** — không phải SPA như ghi nhận cũ; link tải GET thuần trả 200 rỗng | ❌ cần trình duyệt |
+| easyinvoice.com.vn (Thái Sơn) | SPA; `DownloadInvPdf`/`DownloadInvXml` đều trả HTML | ❌ cần trình duyệt |
+| ehoadon.vn | **ReCaptcha** ở trang tra cứu | ❌ cần trình duyệt |
 | `info.vietcombank.com.vn` | Biên lai ngân hàng, **không phải HĐ GTGT** | — đã lọc khỏi ứng viên (T36) |
 
 File tải từ cổng là **XML thật** ⇒ chạy pipeline như HĐ có đính kèm. Cổng lỗi /
@@ -232,6 +233,23 @@ ghi rác vào `data/`.
    thay `can-tai-tay-*.csv` vốn bị ghi đè mỗi lần chạy nên mất dấu.
 3. **Nhánh trình duyệt (SPA/captcha) ngoài phạm vi đợt này** — sẽ dừng ở bước
    phân loại trang với chẩn đoán cụ thể, thành mục riêng sau.
+
+### Kết quả thực đo (2026-08-26)
+
+Đợt 7 **đã làm xong T37–T45**; còn T46 (trình duyệt). Chạy thật 3 hộp thư,
+kỳ 06/2026:
+
+- Sổ `data/so-hoa-don-cho-tai.csv`: **70 dòng**, **0 dòng thiếu chẩn đoán**.
+- Phân bố: 45 captcha · 12 không có link · 6 SPA · 4 thiếu mã · **3 tải tự động**.
+- Mọi file do quy trình dò ghi ra đều parse ra hóa đơn hợp lệ (**3/3**).
+- Kiểm chứng học-rồi-đi-tắt trên cổng thật `ipos.vn`: lần 1 `page_kind=file`
+  (dò), ghi công thức vào registry; lần 2 `page_kind=cong-thuc` (đi tắt).
+
+**Kết luận thẳng thắn:** quy trình dò HTTP thuần gỡ được ~2/44 hóa đơn khác
+nhau. **64% nằm sau captcha** ở meinvoice + ehoadon → giá trị lớn nhất còn lại
+nằm ở **T46 (trình duyệt)**, vốn bị đẩy ra ngoài phạm vi spec. Hạ tầng đã xây
+không phí: nhánh trình duyệt dùng lại nguyên `worklist`, `ncc`, `accept_files`
+và `candidate_download_links`.
 
 ### Task (chi tiết trong spec)
 

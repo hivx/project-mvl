@@ -159,25 +159,30 @@ từ link tra cứu có sẵn trong mail, **tự xác minh** bằng cách parse 
 hợp lệ, rồi **tự nhớ** công thức. Registry là *bộ nhớ đệm*, không phải điều kiện
 tiên quyết — cổng chưa từng gặp vẫn tải được ngay lần đầu.
 
-- [ ] **T37 — Khảo sát** (không code): dựng lại danh sách chỉ-link, thống kê theo
-  domain + loại trang (html-thuần / có-form / SPA / captcha). Trả lời 4 Open
-  Question của spec. Bao luôn hộp thư `mvl.invoices2024@gmail.com` chưa quét.
-- [ ] **T44 — Vá `save_invoice_files`** ghi đè khi trùng tên (`collect.py:157`) —
-  lỗi mất dữ liệu tiềm ẩn, độc lập, làm sớm.
-- [ ] **T38 — `worklist.py`**: sổ CSV tích lũy `data/so-hoa-don-cho-tai.csv`,
-  merge không đè ô người dùng tự điền (mã tra cứu, ghi chú).
-- [ ] **T39 — `lookup.py`**: chấm điểm link tra cứu giữa 5–15 URL trong mail +
-  bóc mã (cả text lẫn bảng HTML).
-- [ ] **T40 — `portal_probe.py` phần thuần**: `classify_page` / `find_form` /
-  `candidate_download_links` / `accept_files`. Fixture HTML thật từ T37.
-- [ ] **T41 — `probe()` + tích hợp `collect`**: lấy trang → phân loại → POST form
-  nếu cần → tải ứng viên → xác minh. ≤5 request/HĐ, ≤3 ứng viên.
-- [ ] **T42 — `ncc.py` + `RegistryAdapter`**: học công thức từ URL đã xác minh,
-  đi tắt lần sau, tự dò lại khi cổng đổi URL.
-- [ ] **T43 — Lệnh `hdtool ncc`** (+ menu tự gọi `--tai`, không hỏi thêm câu nào).
-- [ ] **T45 — Chạy thật + đo**: mọi dòng chưa tải được phải có chẩn đoán cụ thể;
-  không XML rác nào lọt vào `data/`. Cập nhật README/CLAUDE/adapters/tổng quan.
-- [ ] **T46 — (spec riêng, sau)** nhánh trình duyệt cho cổng SPA/captcha.
+- [x] **T37 — Khảo sát**: 76 dòng chỉ-link = **44 HĐ khác nhau**. meinvoice (22)
+  và ehoadon (6) là **CAPTCHA** chứ không phải SPA như README cũ ghi → 64% nằm
+  ngoài tầm HTTP thuần. Link tải MISA GET thuần trả **200 rỗng 0 byte**. Chỉ
+  `ipos.vn` giải trọn vẹn. Kết quả: `docs/superpowers/specs/2026-08-25-khao-sat-cong-tra-cuu.md`.
+- [x] **T44 — Vá `save_invoice_files`**: trùng tên mà khác nội dung → thêm `-2`;
+  trùng cả nội dung → dùng lại file cũ (giữ idempotent).
+- [x] **T38 — `worklist.py`**: sổ `data/so-hoa-don-cho-tai.csv` tích lũy, merge
+  KHÔNG đè ô người dùng tự điền (mã tra cứu, ghi chú), ghi qua file tạm.
+- [x] **T39 — `lookup.py`**: chấm điểm link giữa 5–15 URL trong mail + bóc mã từ
+  query, **từ path** (ehoadon `tracuu.ehoadon.vn/<mã>`) và từ nhãn (kể cả `MTC`).
+  Đo thật: bóc đúng mã 100% cho 34 dòng meinvoice.
+- [x] **T40 — `portal_probe.py` phần thuần**: `classify_page` (captcha xét TRƯỚC
+  form) / `find_form` (mang hidden field) / `candidate_download_links` /
+  `accept_files`. Hồi quy trên HTML thật của 4 cổng.
+- [x] **T41 — `probe()` + tích hợp `collect`**: trần 5 request/HĐ, 3 ứng viên,
+  nghỉ 1s. Regex anchor tách 2 bước (bản cũ backtrack siêu tuyến tính trên trang
+  80–150KB). Chạy thật: tải tự động được 3 hóa đơn ipos.
+- [x] **T42 — `ncc.py` + `RegistryAdapter`**: học công thức từ URL đã xác minh,
+  đi tắt lần sau, công thức hỏng thì tự dò lại và ghi đè. Kèm sửa nhãn Trạng thái
+  cho phản ánh chỗ tắc thật (chạy thật lộ ra 21 dòng ghi nhầm "thiếu mã").
+- [x] **T43 — `hdtool ncc`** (+ `--tai`) và menu tự gọi, không hỏi thêm câu nào.
+- [x] **T45 — Chạy thật + tài liệu**: 70 dòng sổ, **0 dòng thiếu chẩn đoán**.
+- [ ] **T46 — (spec riêng, sau)** nhánh trình duyệt cho cổng SPA/captcha —
+  **đây mới là chỗ có 64% giá trị còn lại**.
 
 Thứ tự: **T37 → T44 → T38 → T39 → T40 → T41 → T42 → T43 → T45**.
 

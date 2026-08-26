@@ -1,25 +1,42 @@
-# Sổ công thức tải hóa đơn theo nhà cung cấp.
-#
-# Tool TỰ GHI vào đây sau mỗi lần dò thành công (portal_probe.fetch_link_only ->
-# ncc.learn). Bạn sửa tay được. File này CÓ commit — công thức đi theo repo;
-# còn sổ hóa đơn nằm trong data/ là dữ liệu cục bộ, không commit.
-#
-# Registry là BỘ NHỚ ĐỆM, không phải điều kiện tiên quyết: cổng chưa có ở đây
-# vẫn tải được (tool dò từ đầu), có công thức chỉ để đi tắt.
-#
-# - dung_adapter : cổng phức tạp (CSRF + POST + zip) -> dùng adapter code riêng.
-# - phai_do_lai  : link ký theo phiên, không template hóa theo mã được.
-
 - ten: einvoice.com.vn
-  nhan_dien: [einvoice.com.vn]
+  nhan_dien:
+  - einvoice.com.vn
+  bat_ma: {}
+  tai: {}
+  can_phien: false
   dung_adapter: einvoice_com_vn
-
+  phai_do_lai: false
+  hoc_tu: ''
+  ngay_hoc: ''
 - ten: VNPT
-  nhan_dien: [vnpt-invoice.com.vn]
+  nhan_dien:
+  - vnpt-invoice.com.vn
+  bat_ma: {}
+  tai: {}
+  can_phien: false
   dung_adapter: vnpt_invoice
   phai_do_lai: true
-
+  hoc_tu: ''
+  ngay_hoc: ''
 - ten: Fast e-Invoice
-  nhan_dien: [einvoice.fast.com.vn]
+  nhan_dien:
+  - einvoice.fast.com.vn
+  bat_ma: {}
+  tai: {}
+  can_phien: false
   dung_adapter: fast_einvoice
   phai_do_lai: true
+  hoc_tu: ''
+  ngay_hoc: ''
+- ten: tracuuhoadon.ipos.vn
+  nhan_dien:
+  - tracuuhoadon.ipos.vn
+  bat_ma:
+    tu_link: https://tracuuhoadon\.ipos\.vn/Invoice/Download78\?id=([A-Za-z0-9_-]+)
+  tai:
+    xml: https://tracuuhoadon.ipos.vn/Invoice/Download78?id={ma}
+  can_phien: false
+  dung_adapter: ''
+  phai_do_lai: false
+  hoc_tu: https://tracuuhoadon.ipos.vn/Invoice/Download78?id=48072953
+  ngay_hoc: '2026-08-26'

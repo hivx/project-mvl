@@ -33,7 +33,11 @@ src/hdtool/
   mailscan.py    # IMAP readonly: quét + fetch (helper thuần tách riêng để test)
   classify.py    # chấm điểm email -> certain/suspect/ignore
   collect.py     # trích attachment (giải nén zip), dò link, lưu cây thư mục
-  adapters/      # adapter tải HĐ chỉ-link từ cổng; einvoice.com.vn đã chạy (HTTP)
+  lookup.py      # bóc link tra cứu + mã ra khỏi email (chấm điểm link, nhãn mã)
+  portal_probe.py# dò cổng: phân loại trang, đọc form, tìm link tải, XÁC MINH
+  ncc.py         # registry công thức tải theo NCC (bộ nhớ đệm của quy trình dò)
+  worklist.py    # sổ HĐ chỉ-link tích lũy (CSV, người dùng sửa tay được)
+  adapters/      # adapter code cho cổng phức tạp + registry_adapter (dựng từ YAML)
   aggregate.py   # khử trùng, thay thế, lọc mua-vào, gom thuế suất; only_company
   reports.py     # xuất danh sách ứng viên/nghi ngờ (CSV)
   excel.py       # xuất .xlsx 4 sheet giống file mẫu (chi tiết SP/BK TT80/DS HĐ/DS SP)
@@ -89,13 +93,16 @@ chính + `-tong-hop.csv` + `-bo-qua.csv`.
 
 - Hộp thư hóa đơn thật là **`anh.doan@medcons.vn`** (khai `IMAP_USER_2`), chứa hóa
   đơn của CẢ hai công ty. `info@miyano.com.vn` gần như không có hóa đơn XML.
-- **Adapter portal chỉ viết được sau khi khảo sát email thật** của từng nhà phát
-  hành. Tự động (HTTP): **`einvoice.com.vn`** (saigoncoop…), **`vnpt-invoice`** và
-  **`einvoice.fast.com.vn`** (Fast) — cả VNPT lẫn Fast dùng chung pattern "email có
-  link tải-thẳng đã ký, bỏ qua captcha ở trang tra cứu". meinvoice/easyinvoice là
-  SPA (cần dò XHR), ehoadon có ReCaptcha (cần trình duyệt/tay). Email
+- **HĐ chỉ-link: dò tự động trước, adapter code chỉ cho cổng phức tạp** (Đợt 7).
+  Thứ tự: công thức trong `config/ncc-registry.yaml` → adapter code → dò từ đầu.
+  Chốt chặn: **chỉ nhận khi bytes parse ra `Invoice` hợp lệ** — nhờ vậy việc đoán
+  "link nào là link tải" không ghi rác vào `data/`. Dò xong thì học công thức.
+  Tự động được: `einvoice.com.vn`, `vnpt-invoice`, `einvoice.fast.com.vn`,
+  `tracuuhoadon.ipos.vn`. **meinvoice và ehoadon là CAPTCHA** (không phải SPA như
+  ghi nhận cũ) — chiếm ~64% HĐ chỉ-link, cần trình duyệt, chưa làm.
   `VCBDigibank@info.vietcombank.com.vn` là **biên lai NH, không phải HĐ GTGT**.
-  Xem `src/hdtool/adapters/README.md`.
+  Xem `src/hdtool/adapters/README.md` và khảo sát
+  `docs/superpowers/specs/2026-08-25-khao-sat-cong-tra-cuu.md`.
 - Ghi chú dữ liệu: bản Anh Doan **forward** thường có XML hỏng 37 byte → rơi vào
   `_chua-ro-cong-ty`, nhưng bản gốc parse được nên KHÔNG mất hóa đơn (đã kiểm chứng
   118=118 sau migrate).
