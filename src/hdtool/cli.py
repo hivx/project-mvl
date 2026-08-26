@@ -13,7 +13,8 @@ from . import lookup, portal_probe, worklist, zipmail
 from .collect import (_body_text, extract_links, invoice_dir, invoice_files,
                       save_invoice_files)
 from .config import Settings, load_settings
-from .manifest import filter_uncollected, load_manifest, mark_collected, save_manifest
+from .manifest import (filter_uncollected, load_manifest, mark_collected,
+                       save_manifest, tieu_de_da_tai)
 from .parse_xml import InvoiceParseError, parse_invoice_xml
 from .pipeline import build_report, write_report
 from .reports import write_candidates_csv
@@ -263,7 +264,10 @@ def cmd_collect(settings: Settings, args) -> int:
     manifest = load_manifest(manifest_path)
     so_path = settings.data_dir / "so-hoa-don-cho-tai.csv"
     # Bản Re:/Fwd: không đính kèm thường chỉ là BẢN SAO của hóa đơn đã có.
-    idx_da_tai = worklist.index_da_tai(worklist.load(so_path))
+    # Lấy từ CẢ manifest (hóa đơn đến bằng đính kèm) lẫn sổ (hóa đơn chỉ-link).
+    idx_da_tai = {zipmail.chuan_hoa_tieu_de(td): f
+                  for td, f in tieu_de_da_tai(manifest).items()}
+    idx_da_tai.update(worklist.index_da_tai(worklist.load(so_path)))
     need_manual = []
     so_rows = []
     errors = []
@@ -320,7 +324,7 @@ def cmd_collect(settings: Settings, args) -> int:
                     company, ngay = _peek_company_date(files, c, settings)
                     dest = invoice_dir(settings.data_dir, company, ngay, _extract_email(c.sender))
                     saved = save_invoice_files(files, dest)
-                    mark_collected(manifest, c.message_id, saved)
+                    mark_collected(manifest, c.message_id, saved, tieu_de=c.subject)
                     saved_count += 1
                     where = saved.get("xml") or saved.get("pdf") or saved.get("zip")
                     chu_hop_thu = settings.mailboxes.get(account.user.strip().lower())
@@ -367,7 +371,7 @@ def cmd_collect(settings: Settings, args) -> int:
             company, ngay = _peek_company_date(files, c, settings)
             dest = invoice_dir(settings.data_dir, company, ngay, _extract_email(c.sender))
             saved = save_invoice_files(files, dest)
-            mark_collected(manifest, c.message_id, saved)
+            mark_collected(manifest, c.message_id, saved, tieu_de=c.subject)
             saved_count += 1
             print(f"  ✓ {c.subject[:50]} -> {saved.get('xml') or saved.get('pdf')}")
         save_manifest(manifest_path, manifest)

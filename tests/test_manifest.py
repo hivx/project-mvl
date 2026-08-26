@@ -3,6 +3,7 @@ from datetime import date
 
 from hdtool.manifest import (
     load_manifest, save_manifest, is_collected, mark_collected, filter_uncollected,
+    tieu_de_da_tai,
 )
 from hdtool.models import EmailCandidate
 
@@ -74,3 +75,18 @@ def test_email_co_zip_va_xml_thi_da_tai():
     m = {}
     mark_collected(m, "m2", {"zip": "a.zip", "xml": "b.xml"})
     assert is_collected(m, "m2") is True
+
+
+def test_manifest_luu_tieu_de_de_nhan_ban_forward_trung():
+    """Hóa đơn đến bằng đính kèm KHÔNG có dòng trong sổ, nên tiêu đề phải lưu ở
+    manifest thì bản Re:/Fwd: các lần chạy sau mới nhận ra là bản sao."""
+    m = {}
+    mark_collected(m, "m1", {"xml": "data/miyano/2026-06/x/hd.xml"},
+                   tieu_de="ABC gửi hóa đơn 123")
+    assert tieu_de_da_tai(m) == {"ABC gửi hóa đơn 123": "data/miyano/2026-06/x/hd.xml"}
+
+
+def test_khoa_phu_khong_lam_hong_kiem_tra_zip_only():
+    m = {}
+    mark_collected(m, "m-zip", {"zip": "x.zip"}, tieu_de="SMBC")
+    assert is_collected(m, "m-zip") is False      # vẫn phải là "chưa tải"
