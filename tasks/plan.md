@@ -149,6 +149,38 @@ Chạy `report --company miyano --from 2026-06-01 --to 2026-06-30` so với
   phải HĐĐT chuẩn). **Quyết định: chấp nhận NHẬP TAY** (không nới classifier —
   rủi ro false-positive cao). Không đổi code.
 
+## Đợt 7 — Tự động tra cứu & tải hóa đơn chỉ-link (cổng tự học)
+
+Spec: `docs/superpowers/specs/2026-08-25-tu-dong-tra-cuu-tai-hoa-don.md`
+Kế hoạch chi tiết (từng bước, có code): `docs/superpowers/plans/2026-08-25-tu-dong-tra-cuu-tai-hoa-don.md`
+
+Đảo hướng: thay vì viết một adapter Python cho mỗi cổng, **tool tự dò** cách tải
+từ link tra cứu có sẵn trong mail, **tự xác minh** bằng cách parse ra `Invoice`
+hợp lệ, rồi **tự nhớ** công thức. Registry là *bộ nhớ đệm*, không phải điều kiện
+tiên quyết — cổng chưa từng gặp vẫn tải được ngay lần đầu.
+
+- [ ] **T37 — Khảo sát** (không code): dựng lại danh sách chỉ-link, thống kê theo
+  domain + loại trang (html-thuần / có-form / SPA / captcha). Trả lời 4 Open
+  Question của spec. Bao luôn hộp thư `mvl.invoices2024@gmail.com` chưa quét.
+- [ ] **T44 — Vá `save_invoice_files`** ghi đè khi trùng tên (`collect.py:157`) —
+  lỗi mất dữ liệu tiềm ẩn, độc lập, làm sớm.
+- [ ] **T38 — `worklist.py`**: sổ CSV tích lũy `data/so-hoa-don-cho-tai.csv`,
+  merge không đè ô người dùng tự điền (mã tra cứu, ghi chú).
+- [ ] **T39 — `lookup.py`**: chấm điểm link tra cứu giữa 5–15 URL trong mail +
+  bóc mã (cả text lẫn bảng HTML).
+- [ ] **T40 — `portal_probe.py` phần thuần**: `classify_page` / `find_form` /
+  `candidate_download_links` / `accept_files`. Fixture HTML thật từ T37.
+- [ ] **T41 — `probe()` + tích hợp `collect`**: lấy trang → phân loại → POST form
+  nếu cần → tải ứng viên → xác minh. ≤5 request/HĐ, ≤3 ứng viên.
+- [ ] **T42 — `ncc.py` + `RegistryAdapter`**: học công thức từ URL đã xác minh,
+  đi tắt lần sau, tự dò lại khi cổng đổi URL.
+- [ ] **T43 — Lệnh `hdtool ncc`** (+ menu tự gọi `--tai`, không hỏi thêm câu nào).
+- [ ] **T45 — Chạy thật + đo**: mọi dòng chưa tải được phải có chẩn đoán cụ thể;
+  không XML rác nào lọt vào `data/`. Cập nhật README/CLAUDE/adapters/tổng quan.
+- [ ] **T46 — (spec riêng, sau)** nhánh trình duyệt cho cổng SPA/captcha.
+
+Thứ tự: **T37 → T44 → T38 → T39 → T40 → T41 → T42 → T43 → T45**.
+
 ## Ghi chú
 
 - T11 là phần fragile duy nhất, không làm mù được — chờ email thật.
