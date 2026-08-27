@@ -12,16 +12,9 @@ from __future__ import annotations
 import re
 from typing import Optional
 
-import requests
-
 from ..collect import Attachment, _kind, expand_zips
+from ..http import new_session as _new_session
 from ..ncc import NccEntry, build_url
-
-
-def _new_session() -> requests.Session:
-    s = requests.Session()
-    s.headers["User-Agent"] = "Mozilla/5.0"
-    return s
 
 
 def _filename(cd: str, fallback: str) -> str:

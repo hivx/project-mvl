@@ -15,9 +15,8 @@ from dataclasses import dataclass, field
 from typing import Optional
 from urllib.parse import urljoin, urlparse
 
-import requests
-
 from .collect import Attachment, _kind, expand_zips
+from .http import new_session as _new_session
 from .models import Invoice
 from .parse_xml import InvoiceParseError, parse_invoice_xml
 
@@ -152,12 +151,6 @@ class ProbeResult:
     download_url: Optional[str] = None
     page_kind: str = ""
     chan_doan: str = ""
-
-
-def _new_session() -> requests.Session:
-    s = requests.Session()
-    s.headers["User-Agent"] = "Mozilla/5.0"
-    return s
 
 
 def _filename(cd: str, fallback: str = "hoadon.xml") -> str:

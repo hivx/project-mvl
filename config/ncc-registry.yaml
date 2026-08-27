@@ -40,3 +40,15 @@
   phai_do_lai: false
   hoc_tu: https://tracuuhoadon.ipos.vn/Invoice/Download78?id=48072953
   ngay_hoc: '2026-08-26'
+- ten: MISA meinvoice
+  nhan_dien:
+  - meinvoice.vn
+  bat_ma: {}
+  tai:
+    xml: https://www.meinvoice.vn/tra-cuu/DownloadHandler.ashx?Type=xml&Code={ma}
+    pdf: https://www.meinvoice.vn/tra-cuu/DownloadHandler.ashx?Type=pdf&Code={ma}
+  can_phien: false
+  dung_adapter: ''
+  phai_do_lai: false
+  hoc_tu: https://www.meinvoice.vn/tra-cuu/DownloadHandler.ashx?Type=xml&Code=VLF4IVJJVJXM
+  ngay_hoc: '2026-08-27'
