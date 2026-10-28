@@ -7,16 +7,20 @@ import sys
 from datetime import date
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlparse
 
-from .adapters import try_fetch_links
-from .collect import extract_links, invoice_dir, invoice_files, save_invoice_files
+from . import lookup, portal_probe, worklist, zipmail
+from .collect import (_body_text, extract_links, invoice_dir, invoice_files,
+                      save_invoice_files)
 from .config import Settings, load_settings
-from .manifest import filter_uncollected, load_manifest, mark_collected, save_manifest
+from .manifest import (filter_uncollected, load_manifest, mark_collected,
+                       save_manifest, tieu_de_da_tai)
 from .parse_xml import InvoiceParseError, parse_invoice_xml
 from .pipeline import build_report, write_report
-from .reports import write_candidates_csv, write_manual_links_csv
+from .reports import write_candidates_csv
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+NCC_REGISTRY = PROJECT_ROOT / "config" / "ncc-registry.yaml"
 
 
 def _isodate(s: str) -> date:
@@ -66,6 +70,8 @@ def build_parser() -> argparse.ArgumentParser:
     add_period(sp_collect)
     sp_collect.add_argument("--include-suspect", action="store_true",
                             help="Tải cả email rổ 'nghi ngờ', không chỉ 'chắc chắn'")
+    sp_collect.add_argument("--company", default=None,
+                            help="Chỉ quét hộp thư của công ty này (xem `mailboxes`)")
 
     sp_report = sub.add_parser("report", help="Parse + tổng hợp ra Excel/CSV")
     add_period(sp_report)
@@ -80,11 +86,18 @@ def build_parser() -> argparse.ArgumentParser:
     add_period(sp_run)
     sp_run.add_argument("--include-suspect", action="store_true")
     sp_run.add_argument("-o", "--output", default=None)
+    sp_run.add_argument("--company", default=None,
+                        help="Chỉ quét hộp thư + tổng hợp cho công ty này")
 
     sp_reorg = sub.add_parser(
         "reorganize", help="Tải lại & sắp xếp hóa đơn theo cấu trúc công ty/tháng/người gửi")
     add_period(sp_reorg)
     sp_reorg.add_argument("--include-suspect", action="store_true")
+
+    sp_ncc = sub.add_parser(
+        "ncc", help="Xem cách tải theo nhà cung cấp + hóa đơn chỉ-link đang chờ")
+    sp_ncc.add_argument("--tai", action="store_true",
+                        help="Thử tải lại các dòng đang chờ trong sổ (dùng mã đã điền)")
 
     return p
 
@@ -152,14 +165,116 @@ def cmd_scan(settings: Settings, args) -> int:
     return 0
 
 
+def _dong_so(c, msg, settings: Settings):
+    """Dựng một dòng sổ cho email chỉ-link: chọn link tra cứu + bóc mã.
+
+    Mã tìm trong TIÊU ĐỀ trước rồi mới tới thân mail — ehoadon ghi "MTC: <mã>"
+    ngay ở tiêu đề. ``_body_text`` gộp cả text/plain lẫn text/html (collect.py)
+    nên truyền cùng chuỗi cho hai tham số của ``find_code`` là đủ.
+    """
+    links = lookup.rank_links(
+        extract_links(msg, settings.classifier.issuer_domains + ["tracuu", "hoadon"]),
+        c.sender, settings.classifier.issuer_domains)
+    than = _body_text(msg)
+    ma = (lookup.code_from_url(links[0]) if links else None) \
+        or lookup.find_code(c.subject or "", "") \
+        or lookup.find_code(than, than)
+    return worklist.WorkRow(
+        message_id=c.message_id,
+        ngay_mail=str(c.internal_date or ""),
+        hop_thu=c.account,
+        nguoi_gui=c.sender,
+        tieu_de=c.subject,
+        ncc=urlparse(links[0]).netloc if links else "",
+        ma_tra_cuu=ma or "",
+        link_tra_cuu=links[0] if links else "",
+    )
+
+
+def cmd_ncc(settings: Settings, args) -> int:
+    """Xem sổ NCC + hóa đơn chỉ-link đang chờ; ``--tai`` thử tải lại.
+
+    Không đụng IMAP: mọi thứ cần thiết (link, mã) đã nằm sẵn trong sổ, nên chạy
+    được cả khi hộp thư đang trục trặc — và dùng đúng mã người dùng gõ tay.
+    """
+    from types import SimpleNamespace as _NS
+
+    from . import ncc
+
+    so_path = settings.data_dir / "so-hoa-don-cho-tai.csv"
+    entries = ncc.load_registry(NCC_REGISTRY)
+    rows = worklist.load(so_path)
+
+    print("== NCC ĐÃ CÓ CÁCH TẢI ==")
+    for e in entries:
+        if e.tai:
+            cach = "công thức"
+        elif e.dung_adapter:
+            cach = f"adapter {e.dung_adapter}"
+        else:
+            cach = "phải dò lại mỗi lần"
+        print(f"  {e.ten:28s} {cach}")
+    if not entries:
+        print("  (chưa có mục nào — tool sẽ tự ghi sau lần dò thành công đầu tiên)")
+
+    cho = [r for r in rows.values() if r.trang_thai != "đã tải"]
+    print(f"\n== ĐANG CHỜ: {len(cho)} hóa đơn ==")
+    for r in cho:
+        print(f"  {r.ncc[:26]:26s} | {r.trang_thai:18s} | {r.chan_doan}")
+
+    if not getattr(args, "tai", False):
+        return 0
+
+    print("\n→ Thử tải lại các dòng đang chờ…")
+    cap_nhat = []
+    for r in cho:
+        if not r.link_tra_cuu:
+            continue
+        res = portal_probe.fetch_link_only([r.link_tra_cuu], r.ma_tra_cuu or None,
+                                           registry_path=NCC_REGISTRY)
+        if res.files:
+            # _peek_company_date đọc candidate.internal_date -> shim, không có mail ở đây.
+            company, ngay = _peek_company_date(res.files, _NS(internal_date=None), settings)
+            dest = invoice_dir(settings.data_dir, company, ngay, _extract_email(r.nguoi_gui))
+            saved = save_invoice_files(res.files, dest)
+            where = saved.get("xml") or saved.get("pdf")
+            r.trang_thai, r.file, r.chan_doan = "đã tải", str(where or ""), ""
+            print(f"  ✓ {r.ncc} -> {r.file}")
+        else:
+            r.trang_thai = portal_probe.trang_thai(res)
+            r.chan_doan = res.chan_doan
+        cap_nhat.append(r)
+    if cap_nhat:
+        worklist.upsert(so_path, cap_nhat)
+        da_tai = sum(1 for r in cap_nhat if r.trang_thai == "đã tải")
+        print(f"\nTải thêm được {da_tai}/{len(cap_nhat)} hóa đơn. Sổ: {so_path}")
+    return 0
+
+
 def cmd_collect(settings: Settings, args) -> int:
+    from .config import accounts_for
     from .mailscan import MailScanner
+    cong_ty_chon = _resolve_company(getattr(args, "company", None), settings)
+    accounts = accounts_for(settings, cong_ty_chon)
+    if cong_ty_chon:
+        bo_qua = [a.user for a in settings.accounts if a not in accounts]
+        print(f"Công ty '{cong_ty_chon}': quét {len(accounts)} hộp thư"
+              + (f" (bỏ qua {', '.join(bo_qua)})" if bo_qua else ""))
     manifest_path = settings.data_dir / ".collected.json"
     manifest = load_manifest(manifest_path)
+    so_path = settings.data_dir / "so-hoa-don-cho-tai.csv"
+    # Bản Re:/Fwd: không đính kèm thường chỉ là BẢN SAO của hóa đơn đã có.
+    # Lấy từ CẢ manifest (hóa đơn đến bằng đính kèm) lẫn sổ (hóa đơn chỉ-link).
+    idx_da_tai = {zipmail.chuan_hoa_tieu_de(td): f
+                  for td, f in tieu_de_da_tai(manifest).items()}
+    idx_da_tai.update(worklist.index_da_tai(worklist.load(so_path)))
     need_manual = []
+    so_rows = []
     errors = []
+    lac = []                 # HĐ tải từ hộp thư công ty này nhưng bên mua là công ty khác
+    cho_ghep = []            # (candidate, zip_bytes|None, mật_khẩu|None) — SMBC gửi 2 email
     saved_count = 0
-    for account in settings.accounts:
+    for account in accounts:
         scanner = MailScanner(settings, account)
         scanner.connect()
         try:
@@ -174,19 +289,54 @@ def cmd_collect(settings: Settings, args) -> int:
                 try:
                     msg = scanner.fetch_message(c.uid)
                     files = invoice_files(msg)
+                    # Zip MÃ HÓA: mật khẩu nằm ở email khác cùng tiêu đề (SMBC).
+                    # Hoãn lại, ghép sau khi đã quét hết mọi hộp thư.
+                    zip_mh = [f for f in files
+                              if f.kind == "zip" and zipmail.la_zip_ma_hoa(f.data)]
+                    if zip_mh:
+                        cho_ghep.append((c, zip_mh[0].data, None))
+                        continue
                     if not files:
-                        links = extract_links(msg, settings.classifier.issuer_domains + ["tracuu", "hoadon"])
-                        portal_files = try_fetch_links(links)  # empty registry -> [] -> manual
-                        if not portal_files:
-                            need_manual.append((c, links))
+                        mk = zipmail.tim_mat_khau(_body_text(msg))
+                        if mk:                       # email chỉ chở mật khẩu
+                            cho_ghep.append((c, None, mk))
                             continue
-                        files = portal_files
+                    row = None
+                    if not files:
+                        row = _dong_so(c, msg, settings)
+                        res = portal_probe.fetch_link_only(
+                            [row.link_tra_cuu] if row.link_tra_cuu else [],
+                            row.ma_tra_cuu or None,
+                            registry_path=NCC_REGISTRY)
+                        if not res.files:
+                            ban_goc = worklist.khop_ban_goc(idx_da_tai, c.subject)
+                            if ban_goc:
+                                row.trang_thai = "trùng bản gốc"
+                                row.chan_doan = f"đã có bản gốc: {ban_goc}"
+                                row.file = ban_goc
+                            else:
+                                row.trang_thai = portal_probe.trang_thai(res)
+                                row.chan_doan = res.chan_doan
+                            so_rows.append(row)
+                            need_manual.append((c, [row.link_tra_cuu] if row.link_tra_cuu else []))
+                            continue
+                        files = res.files
                     company, ngay = _peek_company_date(files, c, settings)
                     dest = invoice_dir(settings.data_dir, company, ngay, _extract_email(c.sender))
                     saved = save_invoice_files(files, dest)
-                    mark_collected(manifest, c.message_id, saved)
+                    mark_collected(manifest, c.message_id, saved, tieu_de=c.subject)
                     saved_count += 1
                     where = saved.get("xml") or saved.get("pdf") or saved.get("zip")
+                    chu_hop_thu = settings.mailboxes.get(account.user.strip().lower())
+                    if chu_hop_thu and company not in ("", chu_hop_thu, "_khac",
+                                                       "_chua-ro-cong-ty"):
+                        lac.append((c.subject, account.user, chu_hop_thu, company))
+                        print(f"  ⚠ hộp {chu_hop_thu} nhưng bên mua là {company.upper()}"
+                              f" -> {where}")
+                    if row is not None:                 # hóa đơn chỉ-link vừa tải được
+                        row.trang_thai, row.file, row.chan_doan = "đã tải", str(where), ""
+                        so_rows.append(row)
+                    idx_da_tai[zipmail.chuan_hoa_tieu_de(c.subject)] = str(where)
                     print(f"  ✓ {c.subject[:50]} -> {where}")
                 except Exception as exc:  # noqa: BLE001 - keep going on any single email
                     errors.append((c, str(exc)))
@@ -195,16 +345,49 @@ def cmd_collect(settings: Settings, args) -> int:
             save_manifest(manifest_path, manifest)   # persist progress per account
             scanner.close()
     if need_manual:
-        print(f"\n⚠ {len(need_manual)} hóa đơn chỉ có LINK (cần adapter / tải tay):")
+        print(f"\n⚠ {len(need_manual)} hóa đơn chỉ có LINK chưa tải được:")
         for c, links in need_manual:
             print(f"  - [{c.account}] {c.sender} | {c.subject[:45]} | {links or 'không thấy link'}")
-        links_csv = settings.data_dir / f"can-tai-tay-{args.from_date}_{args.to_date}.csv"
-        write_manual_links_csv(need_manual, links_csv)
-        print(f"→ Danh sách 'cần tải tay' đã ghi: {links_csv}")
+    if so_rows:
+        so = so_path
+        worklist.upsert(so, so_rows)
+        da_tai = sum(1 for r in so_rows if r.trang_thai == "đã tải")
+        print(f"→ Sổ hóa đơn chỉ-link: {so}"
+              f" ({len(so_rows)} dòng cập nhật, {da_tai} tải tự động được)")
     if errors:
         print(f"\n✗ {len(errors)} email lỗi khi tải (bỏ qua, không làm sập batch):")
         for c, msg in errors[:20]:
             print(f"  - [{c.account}] {c.subject[:45]} — {msg}")
+    if cho_ghep:
+        cap = zipmail.ghep_cap([(c.message_id, c.subject, z, mk) for c, z, mk in cho_ghep])
+        print(f"\n== ZIP MÃ HÓA: {len(cho_ghep)} email, ghép được {len(cap)} cặp ==")
+        theo_id = {c.message_id: c for c, _, _ in cho_ghep}
+        for mid, (zip_bytes, mat_khau) in cap.items():
+            c = theo_id[mid]
+            files = zipmail.giai_nen_co_mat_khau(zip_bytes, mat_khau)
+            if not files:
+                print(f"  ✗ sai mật khẩu / zip hỏng: {c.subject[:50]}")
+                continue
+            company, ngay = _peek_company_date(files, c, settings)
+            dest = invoice_dir(settings.data_dir, company, ngay, _extract_email(c.sender))
+            saved = save_invoice_files(files, dest)
+            mark_collected(manifest, c.message_id, saved, tieu_de=c.subject)
+            saved_count += 1
+            print(f"  ✓ {c.subject[:50]} -> {saved.get('xml') or saved.get('pdf')}")
+        save_manifest(manifest_path, manifest)
+        thieu = [c for c, z, _ in cho_ghep if z and c.message_id not in cap]
+        for c in thieu:
+            so_rows.append(worklist.WorkRow(
+                message_id=c.message_id, ngay_mail=str(c.internal_date or ""),
+                hop_thu=c.account, nguoi_gui=c.sender, tieu_de=c.subject,
+                ncc="(zip mã hóa)", trang_thai="thiếu mật khẩu zip",
+                chan_doan="không tìm thấy email chứa mật khẩu cùng tiêu đề",
+                ghi_chu="dán mật khẩu vào cột 'Mã tra cứu' rồi chạy lại"))
+    if lac:
+        print(f"\n⚠ {len(lac)} hóa đơn lạc công ty (hộp thư một đằng, bên mua một nẻo):")
+        for tieu_de, hop, chu, ben_mua in lac[:10]:
+            print(f"  - [{hop}] thuộc {chu}, nhưng bên mua {ben_mua}: {tieu_de[:44]}")
+        print("  (vẫn lưu theo MST bên mua — đúng luật; dòng này chỉ để bạn rà lại)")
     print(f"\nĐã tải {saved_count} hóa đơn có file.")
     return 0
 
@@ -353,15 +536,35 @@ def cmd_run(settings: Settings, args) -> int:
     report_args = argparse.Namespace(
         from_date=args.from_date, to_date=args.to_date,
         output=getattr(args, "output", None), source=None,
+        # Chọn công ty ở collect thì bảng kê cũng phải cho đúng công ty đó.
+        company=getattr(args, "company", None),
+        format=getattr(args, "format", None) or "xlsx",
     )
     return cmd_report(settings, report_args)
 
 
 _COMMANDS = {"scan": cmd_scan, "collect": cmd_collect, "report": cmd_report,
-             "run": cmd_run, "reorganize": cmd_reorganize}
+             "run": cmd_run, "reorganize": cmd_reorganize, "ncc": cmd_ncc}
 
 
 def main(argv: Optional[list] = None) -> int:
+    from .mailscan import MailLoginError
+    try:
+        return _main(argv)
+    except MailLoginError as exc:
+        # Dừng hẳn, KHÔNG bỏ qua hộp thư lỗi để chạy tiếp: thiếu một hộp thư là
+        # bảng kê thiếu hóa đơn mà không ai biết.
+        print(f"\n✗ {exc}\n"
+              f"  Máy chủ không nhận app password của {exc.user} trong .env: gõ thiếu/sai\n"
+              f"  ký tự (app password Google có đúng 16 chữ cái), tạo nhầm ở tài khoản\n"
+              f"  khác, hoặc đã bị thu hồi (đổi mật khẩu / tắt xác minh 2 bước).\n"
+              f"  Tạo app password mới tại https://myaccount.google.com/apppasswords,\n"
+              f"  sửa dòng IMAP_APP_PASSWORD tương ứng trong .env rồi chạy lại.\n"
+              f"  Đã dừng — chưa xuất bảng kê.", file=sys.stderr)
+        return 1
+
+
+def _main(argv: Optional[list] = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     settings = _load_settings()
     if not argv:
@@ -369,7 +572,9 @@ def main(argv: Optional[list] = None) -> int:
         from .interactive import run_interactive
         return run_interactive(settings)
     args = build_parser().parse_args(argv)
-    args.from_date, args.to_date = resolve_period(args.from_date, args.to_date, settings)
+    # `ncc` làm việc trên sổ đã có (link + mã nằm sẵn trong CSV) nên không cần kỳ.
+    if hasattr(args, "from_date"):
+        args.from_date, args.to_date = resolve_period(args.from_date, args.to_date, settings)
     return _COMMANDS[args.command](settings, args)
 
 

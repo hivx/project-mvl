@@ -17,9 +17,8 @@ from __future__ import annotations
 import re
 from typing import Optional
 
-import requests
-
 from ..collect import Attachment, _kind
+from ..http import new_session as _new_session
 
 
 def _filename(content_disposition: str) -> str:
@@ -37,12 +36,6 @@ def _with_type(url: str, type_value: str) -> str:
         return re.sub(r"([?&]type=)[^&]*", r"\g<1>" + type_value, url, count=1)
     sep = "&" if "?" in url else "?"
     return f"{url}{sep}type={type_value}"
-
-
-def _new_session() -> requests.Session:
-    s = requests.Session()
-    s.headers["User-Agent"] = "Mozilla/5.0"
-    return s
 
 
 class FastEinvoiceAdapter:

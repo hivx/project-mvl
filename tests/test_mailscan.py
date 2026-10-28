@@ -1,6 +1,8 @@
 """Tests for mailbox scan pure helpers (no network)."""
 from datetime import date
 
+import pytest
+
 from hdtool.mailscan import (
     imap_date, search_window, pick_all_mail, detect_kinds_from_bodystructure,
     extract_uid,
@@ -53,3 +55,27 @@ def test_extract_uid_falls_back_to_leading_number():
 
 def test_extract_uid_empty_when_absent():
     assert extract_uid("(BODYSTRUCTURE (...))") == ""
+
+
+def test_connect_dang_nhap_that_bai_neu_ten_hop_thu(monkeypatch):
+    """Gmail từ chối app password -> lỗi phải nói rõ HỘP THƯ NÀO, không chỉ 'Invalid credentials'."""
+    import imaplib
+
+    from hdtool import mailscan
+    from hdtool.config import Account, build_settings
+
+    class ImapTuChoi:
+        def __init__(self, *a, **k):
+            pass
+
+        def login(self, user, password):
+            raise imaplib.IMAP4.error(b"[AUTHENTICATIONFAILED] Invalid credentials (Failure)")
+
+    monkeypatch.setattr(mailscan.imaplib, "IMAP4_SSL", ImapTuChoi)
+    scanner = mailscan.MailScanner(
+        build_settings({}, {}), Account("imap.gmail.com", 993, "anh.doan@medcons.vn", "sai"))
+    with pytest.raises(mailscan.MailLoginError) as ei:
+        scanner.connect()
+    assert ei.value.user == "anh.doan@medcons.vn"
+    assert "anh.doan@medcons.vn" in str(ei.value)
+    assert "sai" not in str(ei.value)          # không bao giờ in mật khẩu

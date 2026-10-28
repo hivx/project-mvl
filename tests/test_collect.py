@@ -6,7 +6,7 @@ from email.message import EmailMessage
 from pathlib import Path
 
 from hdtool.collect import (
-    slug, iter_attachments, invoice_files, extract_links,
+    Attachment, slug, iter_attachments, invoice_files, extract_links,
     period_dir, save_invoice_files, has_kind, invoice_dir,
 )
 
@@ -111,3 +111,21 @@ def test_save_invoice_files_writes_to_dest(tmp_path):
     assert saved["pdf"].exists()
     s = str(saved["xml"])
     assert "miyano" in s and "2026-06" in s and "xanhsm" in s
+
+
+def test_save_invoice_files_khong_ghi_de_khi_khac_noi_dung(tmp_path):
+    """Hai HĐ khác nhau trùng tên file -> phải giữ cả hai."""
+    save_invoice_files([Attachment("hoadon.xml", "xml", b"<A/>")], tmp_path)
+    save_invoice_files([Attachment("hoadon.xml", "xml", b"<B/>")], tmp_path)
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["hoadon-2.xml", "hoadon.xml"]
+    assert (tmp_path / "hoadon.xml").read_bytes() == b"<A/>"
+    assert (tmp_path / "hoadon-2.xml").read_bytes() == b"<B/>"
+
+
+def test_save_invoice_files_trung_noi_dung_thi_dung_lai_file_cu(tmp_path):
+    """Tải lại đúng file cũ -> không đẻ bản sao (giữ tính idempotent)."""
+    a = Attachment("hoadon.xml", "xml", b"<A/>")
+    save_invoice_files([a], tmp_path)
+    saved = save_invoice_files([a], tmp_path)
+    assert [p.name for p in tmp_path.iterdir()] == ["hoadon.xml"]
+    assert saved["xml"].name == "hoadon.xml"

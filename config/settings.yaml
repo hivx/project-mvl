@@ -6,6 +6,16 @@ companies:
   "0109529507": miyano
   "0108186705": medcons
 
+# Hộp thư nào thuộc công ty nào. Chọn công ty khi chạy -> CHỈ quét hộp thư của
+# công ty đó (nhanh hơn, log không lẫn). Hộp thư KHÔNG khai ở đây thì vẫn được
+# quét cho mọi công ty — mặc định an toàn, thà quét thừa còn hơn sót hóa đơn.
+# Thư mục lưu và bảng kê VẪN chia theo MST bên mua đọc từ XML (đúng luật);
+# hóa đơn "lạc công ty" sẽ được cảnh báo chứ không bị xếp sai.
+mailboxes:
+  info@miyano.com.vn:         miyano
+  mvl.invoices2024@gmail.com: miyano
+  anh.doan@medcons.vn:        medcons
+
 # Kỳ mặc định (NGÀY LẬP hóa đơn). Trong menu tương tác (`python run.py`) nhấn Enter
 # ở ô ngày sẽ dùng khoảng này; `hdtool run`/`report` không kèm --from/--to cũng vậy.
 # Truyền --from/--to (hoặc gõ ngày trong menu) sẽ ghi đè. Để trống nếu muốn bắt
@@ -60,3 +70,17 @@ whitelist_senders: []
 # không mất HĐ thật). Ví dụ VCBDigibank chỉ gửi "biên lai chuyển tiền".
 exclude_senders:
   - vcbdigibank
+  - viettelpost.com.vn          # bảng kê cước + cảnh báo đăng nhập, không phải HĐ GTGT
+  - accounts.google.com         # cảnh báo bảo mật Google
+  - dichvucongcucthue@gdt.gov.vn   # xác thực tờ khai, không phải hóa đơn
+
+# Tiêu đề KHÔNG BAO GIỜ là HĐ GTGT -> loại khỏi ứng viên. Dùng khi NGƯỜI GỬI là
+# nhà phát hành thật nên không chặn cả người gửi được: chặn
+# hoadondientu@vnpt-invoice.vn sẽ đánh rơi hóa đơn VNPT chỉ-link.
+# Luật an toàn giữ nguyên: email có XML thì LUÔN giữ, dù khớp bộ lọc nào.
+exclude_subjects:
+  - "cảnh báo đăng nhập"
+  - "xác thực thông tin"
+  - "thông báo tài khoản trả trước"
+  - "security alert"
+  - "xác thực tờ khai"

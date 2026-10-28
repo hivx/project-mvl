@@ -1,19 +1,34 @@
 # Portal adapters
 
-Adapter tải hóa đơn từ cổng tra cứu của từng nhà phát hành, cho các email
-**chỉ có link + mã** (không đính kèm file).
+Tải hóa đơn từ cổng tra cứu cho các email **chỉ có link + mã** (không đính kèm).
 
-Mỗi nhà phát hành có URL và cách lấy file khác nhau, **chỉ viết chính xác được
-sau khi khảo sát email thật**. Đây là phần fragile nhất của tool.
+## Từ Đợt 7: dò tự động trước, adapter code chỉ cho cổng phức tạp
 
-## Tình trạng cổng (khảo sát thật 2026-07-08)
+Không còn phải viết một adapter Python cho mỗi cổng. Luồng mặc định
+(`portal_probe.fetch_link_only`):
+
+1. **Công thức trong `config/ncc-registry.yaml`** — nếu cổng này đã học rồi.
+2. **Adapter code** trong thư mục này — cho cổng phức tạp (CSRF + POST + zip).
+3. **Dò tự động** — lấy trang tra cứu, phân loại, POST form nếu cần, thử tối đa
+   3 link tải, **chỉ nhận khi bytes parse ra `Invoice` hợp lệ**, rồi **ghi công
+   thức vào registry** để lần sau đi tắt.
+
+Registry là **bộ nhớ đệm**, không phải điều kiện tiên quyết: cổng chưa từng gặp
+vẫn tải được ngay lần đầu. Công thức hỏng (cổng đổi URL) thì tự rơi xuống nhánh
+dò để học lại — tự chữa lành.
+
+Viết adapter code **chỉ khi** cổng cần nhiều bước mà một URL không diễn đạt nổi.
+
+## Tình trạng cổng (khảo sát thật 2026-08-25 — xem `docs/superpowers/specs/2026-08-25-khao-sat-cong-tra-cuu.md`)
 
 | Cổng | Cơ chế | Tự động (HTTP)? |
 |------|--------|-----------------|
 | **`*.einvoice.com.vn`** (saigoncoop…) | GET trang → CSRF token + `idHoaDon` → POST `/tai-ve-hoa-don` → ZIP (XML+PDF) | ✅ **`einvoice_com_vn.py`** (đã đăng ký) |
 | **`einvoice.fast.com.vn`** (Fast) | Trang `index.aspx?c=` CÓ captcha, NHƯNG email có link ký `index.aspx?type=2&c=&hash=` trả **XML thẳng** (type=1/3 = PDF; c+hash chung, chỉ khác type) — không captcha | ✅ **`fast_einvoice.py`** (đã đăng ký) |
-| meinvoice.vn (MISA) | SPA; JS đóng gói CDN mã hóa (`meinvoice.misacdn.net/…WebResource.axd`), `ApiUrl=app.meinvoice.vn`, hàm `downloadInvoice` dựng endpoint lúc chạy | ⏳ **cần xem XHR bằng trình duyệt** (DevTools) — HTTP thuần không dò ra |
-| easyinvoice.com.vn (Thái Sơn) | SPA, endpoint `/Invoice/ConvertInv` dựng bằng JS | ⏳ **cần xem XHR bằng trình duyệt** |
+| meinvoice.vn (MISA) | **CAPTCHA** (không phải SPA như ghi nhận cũ): trang trả HTML thật, form có `txtCode` + `captcha$captchaTextbox`. Link tải `DownloadHandler.ashx?Type=xml&Code=` GET thuần trả **200 rỗng 0 byte** → cần phiên đã qua captcha | ❌ cần trình duyệt |
+| easyinvoice.com.vn (Thái Sơn) | SPA; `Invoice/DownloadInvPdf` và `DownloadInvXml` trong mail đều trả HTML | ❌ cần trình duyệt |
+| **`tracuuhoadon.ipos.vn`** | Mail kèm sẵn `Invoice/Download78?id=<id>` trả **XML thẳng** (còn `Invoice/getinvoice?token=` lại trả PDF) | ✅ **dò tự động lấy được** |
+| `gsm-einvoice.hilo.com.vn` | Form `Filter.SearchKey` + CSRF, **không captcha** — nhưng mail không kèm mã | ⚠️ thiếu mã |
 | **`*-tt78.vnpt-invoice.com.vn`** (VNPT) | Link email `invoice/getinvoice?token=` trả **XML thẳng** (trang tra cứu mới có captcha, link email thì không) | ✅ **`vnpt_invoice.py`** (đã đăng ký) |
 | ehoadon.vn | **ReCaptcha** ở trang tra cứu | ❌ cần trình duyệt + nhập captcha tay |
 | `info.vietcombank.com.vn` (VCBDigibank) | Email "Biên lai chuyển tiền/thanh toán" — **biên lai ngân hàng, KHÔNG phải HĐ GTGT**, không có link tra cứu | — không dựng adapter; nên lọc khỏi ứng viên (classifier) |

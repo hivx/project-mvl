@@ -14,7 +14,6 @@ from typing import Callable, Optional
 
 from .config import Settings
 
-
 @dataclass
 class Choices:
     """Người dùng đã chọn gì ở menu."""
@@ -100,6 +99,10 @@ def _default_execute(settings: Settings, ch: Choices, out_path, out) -> int:
     rc = cli.cmd_collect(settings, args)
     if rc != 0:
         return rc
+    # Chạy auto hết: thử tải nốt hóa đơn chỉ-có-link (kể cả dòng bạn vừa điền mã
+    # tay vào sổ) trước khi tổng hợp. Cổng lỗi không chặn việc ra bảng kê.
+    out("→ Thử tải nốt hóa đơn chỉ có link tra cứu…")
+    cli.cmd_ncc(settings, SimpleNamespace(tai=True))
     out(f"→ Tổng hợp cho công ty '{ch.company}', xuất {ch.fmt.upper()}…")
     return cli.cmd_report(settings, args)
 

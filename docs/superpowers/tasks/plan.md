@@ -149,6 +149,69 @@ Chạy `report --company miyano --from 2026-06-01 --to 2026-06-30` so với
   phải HĐĐT chuẩn). **Quyết định: chấp nhận NHẬP TAY** (không nới classifier —
   rủi ro false-positive cao). Không đổi code.
 
+## Đợt 7 — Tự động tra cứu & tải hóa đơn chỉ-link (cổng tự học)
+
+Spec: `docs/superpowers/specs/2026-08-25-tu-dong-tra-cuu-tai-hoa-don.md`
+Kế hoạch chi tiết (từng bước, có code): `docs/superpowers/plans/2026-08-25-tu-dong-tra-cuu-tai-hoa-don.md`
+
+Đảo hướng: thay vì viết một adapter Python cho mỗi cổng, **tool tự dò** cách tải
+từ link tra cứu có sẵn trong mail, **tự xác minh** bằng cách parse ra `Invoice`
+hợp lệ, rồi **tự nhớ** công thức. Registry là *bộ nhớ đệm*, không phải điều kiện
+tiên quyết — cổng chưa từng gặp vẫn tải được ngay lần đầu.
+
+- [x] **T37 — Khảo sát**: 76 dòng chỉ-link = **44 HĐ khác nhau**. meinvoice (22)
+  và ehoadon (6) là **CAPTCHA** chứ không phải SPA như README cũ ghi → 64% nằm
+  ngoài tầm HTTP thuần. Link tải MISA GET thuần trả **200 rỗng 0 byte**. Chỉ
+  `ipos.vn` giải trọn vẹn. Kết quả: `docs/superpowers/specs/2026-08-25-khao-sat-cong-tra-cuu.md`.
+- [x] **T44 — Vá `save_invoice_files`**: trùng tên mà khác nội dung → thêm `-2`;
+  trùng cả nội dung → dùng lại file cũ (giữ idempotent).
+- [x] **T38 — `worklist.py`**: sổ `data/so-hoa-don-cho-tai.csv` tích lũy, merge
+  KHÔNG đè ô người dùng tự điền (mã tra cứu, ghi chú), ghi qua file tạm.
+- [x] **T39 — `lookup.py`**: chấm điểm link giữa 5–15 URL trong mail + bóc mã từ
+  query, **từ path** (ehoadon `tracuu.ehoadon.vn/<mã>`) và từ nhãn (kể cả `MTC`).
+  Đo thật: bóc đúng mã 100% cho 34 dòng meinvoice.
+- [x] **T40 — `portal_probe.py` phần thuần**: `classify_page` (captcha xét TRƯỚC
+  form) / `find_form` (mang hidden field) / `candidate_download_links` /
+  `accept_files`. Hồi quy trên HTML thật của 4 cổng.
+- [x] **T41 — `probe()` + tích hợp `collect`**: trần 5 request/HĐ, 3 ứng viên,
+  nghỉ 1s. Regex anchor tách 2 bước (bản cũ backtrack siêu tuyến tính trên trang
+  80–150KB). Chạy thật: tải tự động được 3 hóa đơn ipos.
+- [x] **T42 — `ncc.py` + `RegistryAdapter`**: học công thức từ URL đã xác minh,
+  đi tắt lần sau, công thức hỏng thì tự dò lại và ghi đè. Kèm sửa nhãn Trạng thái
+  cho phản ánh chỗ tắc thật (chạy thật lộ ra 21 dòng ghi nhầm "thiếu mã").
+- [x] **T43 — `hdtool ncc`** (+ `--tai`) và menu tự gọi, không hỏi thêm câu nào.
+- [x] **T45 — Chạy thật + tài liệu**: 70 dòng sổ, **0 dòng thiếu chẩn đoán**.
+- [ ] **T46 — (spec riêng, sau)** nhánh trình duyệt cho cổng SPA/captcha —
+  **đây mới là chỗ có 64% giá trị còn lại**.
+
+Thứ tự: **T37 → T44 → T38 → T39 → T40 → T41 → T42 → T43 → T45**.
+
+## Đợt 8 — Gỡ vướng mắc tải hóa đơn + phạm vi hộp thư
+
+Spec: `docs/superpowers/specs/2026-08-26-go-vuong-mac-tai-hoa-don.md`
+
+Soi 67 dòng "chưa tải được" của Đợt 7 thì ra chúng **không cùng loại vấn đề**:
+51 dòng captcha/SPA, 5 dòng SMBC (zip mã hóa), 2 dòng bản Re: đã có bản gốc,
+9 dòng **không phải hóa đơn**.
+
+- [x] **T47 — Phạm vi hộp thư**: `mailboxes` trong settings.yaml (hộp thư → công
+  ty) + `accounts_for()`. Chọn miyano thì chỉ quét 2 hộp của miyano. Hộp CHƯA
+  khai vẫn quét cho mọi công ty (thà thừa còn hơn sót). Thư mục/bảng kê VẪN theo
+  MST bên mua; hóa đơn lạc công ty được cảnh báo. Kèm sửa `cmd_run` không truyền
+  company/format xuống report.
+- [x] **T48 — Lọc nhiễu**: thêm `exclude_subjects` bên cạnh `exclude_senders`.
+  Cần lọc theo TIÊU ĐỀ vì `hoadondientu@vnpt-invoice.vn` là nhà phát hành thật —
+  chặn cả người gửi sẽ đánh rơi hóa đơn VNPT chỉ-link.
+- [x] **T49 — Bản Re:/Fwd: trùng**: tiêu đề (bỏ tiền tố) khớp hóa đơn đã có →
+  trạng thái "trùng bản gốc" kèm đường dẫn, thay vì báo thiếu.
+- [x] **T50 — SMBC zip mã hóa**: `zipmail.py` ghép cặp email-zip với
+  email-mật-khẩu theo tiêu đề chuẩn hóa rồi giải nén. ZipCrypto cũ nên `zipfile`
+  thư viện chuẩn làm được, **không thêm phụ thuộc**. Kèm sửa `manifest`: mục CHỈ
+  có zip nghĩa là chưa giải nén được → chưa coi là đã tải (nếu không thì 7 hóa
+  đơn SMBC mắc kẹt vĩnh viễn).
+- [ ] **T51–T53 — Nhánh trình duyệt (Playwright)** cho 51 dòng captcha/SPA.
+- [ ] **T54 — Chạy thật + tài liệu** cho toàn Đợt 8.
+
 ## Ghi chú
 
 - T11 là phần fragile duy nhất, không làm mù được — chờ email thật.

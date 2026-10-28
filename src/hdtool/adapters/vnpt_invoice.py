@@ -14,20 +14,13 @@ from __future__ import annotations
 import re
 from typing import Optional
 
-import requests
-
 from ..collect import Attachment, _kind, expand_zips
+from ..http import new_session as _new_session
 
 
 def _filename(content_disposition: str) -> str:
     m = re.search(r'filename\*?=(?:UTF-8\'\')?"?([^";]+)', content_disposition or "")
     return m.group(1).strip() if m else ""
-
-
-def _new_session() -> requests.Session:
-    s = requests.Session()
-    s.headers["User-Agent"] = "Mozilla/5.0"
-    return s
 
 
 class VnptInvoiceAdapter:

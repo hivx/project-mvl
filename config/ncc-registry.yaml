@@ -1,0 +1,54 @@
+- ten: einvoice.com.vn
+  nhan_dien:
+  - einvoice.com.vn
+  bat_ma: {}
+  tai: {}
+  can_phien: false
+  dung_adapter: einvoice_com_vn
+  phai_do_lai: false
+  hoc_tu: ''
+  ngay_hoc: ''
+- ten: VNPT
+  nhan_dien:
+  - vnpt-invoice.com.vn
+  bat_ma: {}
+  tai: {}
+  can_phien: false
+  dung_adapter: vnpt_invoice
+  phai_do_lai: true
+  hoc_tu: ''
+  ngay_hoc: ''
+- ten: Fast e-Invoice
+  nhan_dien:
+  - einvoice.fast.com.vn
+  bat_ma: {}
+  tai: {}
+  can_phien: false
+  dung_adapter: fast_einvoice
+  phai_do_lai: true
+  hoc_tu: ''
+  ngay_hoc: ''
+- ten: tracuuhoadon.ipos.vn
+  nhan_dien:
+  - tracuuhoadon.ipos.vn
+  bat_ma:
+    tu_link: https://tracuuhoadon\.ipos\.vn/Invoice/Download78\?id=([A-Za-z0-9_-]+)
+  tai:
+    xml: https://tracuuhoadon.ipos.vn/Invoice/Download78?id={ma}
+  can_phien: false
+  dung_adapter: ''
+  phai_do_lai: false
+  hoc_tu: https://tracuuhoadon.ipos.vn/Invoice/Download78?id=48072953
+  ngay_hoc: '2026-08-26'
+- ten: MISA meinvoice
+  nhan_dien:
+  - meinvoice.vn
+  bat_ma: {}
+  tai:
+    xml: https://www.meinvoice.vn/tra-cuu/DownloadHandler.ashx?Type=xml&Code={ma}
+    pdf: https://www.meinvoice.vn/tra-cuu/DownloadHandler.ashx?Type=pdf&Code={ma}
+  can_phien: false
+  dung_adapter: ''
+  phai_do_lai: false
+  hoc_tu: https://www.meinvoice.vn/tra-cuu/DownloadHandler.ashx?Type=xml&Code=VLF4IVJJVJXM
+  ngay_hoc: '2026-08-27'

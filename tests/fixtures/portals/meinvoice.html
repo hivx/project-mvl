@@ -1,0 +1,112 @@
+<script type="application/ld+json">
+<script>
+<form id="form1" class="form-base display-flex row" style="display:none">
+<a href="https://www.misa.vn">
+<a href="/">
+<a href="/tinh-nang/"><span>Tính năng</span></a>
+<a href="/tinh-nang/"><span>Phát hành hóa đơn điện tử</span></a>
+<a href="/xu-ly-hoa-don-dau-vao/"><span>Xử lý hóa đơn đầu vào</span></a>
+<a href="/bao-gia/"><span>Báo giá</span></a>
+<a href="/bao-gia/#tab1"><span>Phát hành hóa đơn điện tử</span></a>
+<a href="/bao-gia/#tab2"><span>Xử lý hóa đơn đầu vào</span></a>
+<a href="/tin-tuc/"><span>Kiến thức</span></a>
+<a href="/tra-cuu/kiem-tra/"><span>Kiểm tra HĐ hợp lệ</span></a>
+<a href="/hop-tac/"><span>Hợp tác</span></a>
+<a href="/tra-cuu/"><span>Tra cứu</span></a>
+<a href="/huong-dan/"><span>Hỗ trợ</span></a>
+<a href="/huong-dan/"><span>Hướng dẫn sử dụng</span></a>
+<a href="/tin-tuc/10543/cac-khoa-dao-tao-giai-dap-thac-mac-meinvoice/"><span>Đào tạo miễn phí</span></a>
+<a href="/video/"><span>Video sản phẩm</span></a>
+<a href="/download/"><span>Download</span></a>
+<a href="https://sign-up.meinvoice.vn">Dùng thử</a>
+<a href="https://app3.meinvoice.vn">Đăng nhập</a>
+<input type="button" value="Theo mã tra cứu" class="btn-search-header active" typeBtn="transaction" style="margin-left: 0" />
+<input type="button" value="Theo file xml" class="btn-search-header" typeBtn="fileXml" id='file-type' />
+<input id="btn-search-by-buyer" type="button" value="Theo email/số điện thoại" class="btn-search-header" />
+<input name="txtCode" type="text" id="txtCode" class="code-input m-col flex" placeholder="Nhập mã tra cứu hóa đơn">
+<input type="text" class="file-input m-col flex" placeholder="Chọn file xml có dung lượng tối đa 2MB" readonly="readonly" />
+<a class="choose-file-button m-col" href="javascript:void(0)">
+<input type="file" class="hide choose-file-input" id="fFile" accept=".xml" />
+<input type="button" id="btnSearchInvoice" class="button-search" />
+<div class="sc-item captcha " id="captchaContainer" style="display:none;">
+<div class="captcha-label">
+<div id="captcha" class="captcha-control">
+<img id="captcha_captchaImage" style="display:block;">
+<img onclick="einvoiceSearch.RefreshCaptchaLogin()" id="captchaRefreshButton" src="data:image/jpeg;charset=utf-8;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAALGOfPtRkwAAACBjSFJNAACHDwAAjA8AAP1SAACBQAAAfXkAAOmLAAA85QAAGcxzPIV3AAAKOWlDQ1BQaG90b3Nob3AgSUNDIHByb2ZpbGUAAEjHnZZ3VFTXFofPvXd6oc0wAlKG3rvAANJ7k15FYZgZYCgDDjM0sSGiAhFFRJoiSFDEgNFQJFZEsRAUVLAHJAgoMRhFVCxvRtaLrqy89/Ly++Osb+2z
+<input name="captcha$captchaTextbox" type="text" id="captcha_captchaTextbox" class="capcha-input" placeholder="Nhập mã xác nhận" style="margin-top:8px;vertical-align:middle;display:block;">
+<input type="hidden" name="captcha$codeField" id="captcha_codeField">
+<div class="captcha-description">
+<a class="amis-title" target="_blank" href="https://amis.misa.vn/amis-ke-toan/?utm_source=tra-cuu&utm_medium=seo">
+<a class="amis-child" target="_blank" href="https://amis.misa.vn/amis-ke-toan/?utm_source=tra-cuu&utm_medium=seo">
+<a class="amis-child" target="_blank" href="https://www.meinvoice.vn/?source=tra-cuu&medium=seo">
+<a class="amis-title" target="_blank" href="https://amis.misa.vn/marketing-ban-hang/?utm_source=tra-cuu&utm_medium=seo">
+<a class="amis-child" target="_blank" href="https://amis.misa.vn/phan-mem-crm-amis/?utm_source=tra-cuu&utm_medium=seo">
+<a class="amis-child" target="_blank" href="https://amis.misa.vn/amis-aimarketing/?utm_source=tra-cuu&utm_medium=seo">
+<a class="amis-title" target="_blank" href=" https://amis.misa.vn/amis-nhan-su/?utm_source=tra-cuu&utm_medium=seo">
+<a class="amis-child" target="_blank" href="https://amis.misa.vn/amis-nhan-su/?utm_source=tra-cuu&utm_medium=seo">
+<a class="amis-child" target="_blank" href="https://amis.misa.vn/amis-cham-cong/?utm_source=tra-cuu&utm_medium=seo">
+<a class="amis-title" target="_blank" href="https://amis.misa.vn/misa-amis-van-phong-so/?utm_source=tra-cuu&utm_medium=seo">
+<a class="amis-child" target="_blank" href="https://amis.misa.vn/amis-cong-viec/?utm_source=tra-cuu&utm_medium=seo">
+<a class="amis-child" target="_blank" href="https://amis.misa.vn/amis-quy-trinh/?utm_source=tra-cuu&utm_medium=seo">
+<input type="button" id="learnAboutMisaAmisButton" value="Tìm hiều về MISA AMIS" class="amis-button " style="background: #3BAD26;"></input>
+<input type="button" id="freeExperienceButton" value="Trải nghiệm miễn phí" class="amis-button " style="background: #0087F7;"></input>
+<input type="text" class="code-input m-col flex input-downloadInvoice" placeholder="Nhập số hóa đơn, tên người bán để tìm">
+<input type="button" id="btn-searchInvoice" />
+<input type="button" value="Bỏ chọn" style="font-family: AvertaStdCY-Regular,Helvetica,Arial, sans-serif; font-size: 14px;" class="remove-all-check" onclick="einvoiceSearch.onClickRemoveAllCheck(this)" />
+<input type="button" style="height: 36px !important;font-family: AvertaStdCY-Regular,Helvetica,Arial, sans-serif;font-size:14px;" value="Tải hóa đơn" id="btn-downloadInvoice" onclick="einvoiceSearch.validateDownloadMulti(this)" />
+<input type="checkbox" onclick="einvoiceSearch.onPromotion_ChangeAll(this)" class="chk-record-all" />
+<a class="paginate-button first" onclick="einvoiceSearch.handleRedirectPage(1)"></a>
+<a class="paginate-button pre" onclick="einvoiceSearch.handleRedirectPage(3)"></a>
+<a class="paginate-button next" onclick="einvoiceSearch.handleRedirectPage(4)"></a>
+<a class="paginate-button last" onclick="einvoiceSearch.handleRedirectPage(2)"></a>
+<a class="btn-view use-free" target="_blank" href="https://sign-up.meinvoice.vn/?utm_source=meinvoice-vn&amp;utm_medium=tra-cuu&amp;utm_campaign=&amp;utm_content=dung-thu-hddt&amp;utm_term=billing__">Dùng thử miễn phí</a>
+<a class="btn-view view-demo" target="_blank" href="https://vimeo.com/641359442">Xem demo</a>
+<a class="btn-view buy-now" target="_blank" href="https://store.misa.vn/quote?pid=220">Mua ngay</a>
+<a href="/">
+<a href="https://www.misa.vn/cong-ty" target="_blank">Công ty</a>
+<a href="/category/khong-phan-loai" target="_blank">Tin tức</a>
+<a href="http://misa.jobday.vn" target="_blank">Tuyển dụng</a>
+<a href="https://www.misa.vn/hop-tac" target="_blank">Hợp tác</a>
+<a href="https://www.misa.vn/lien-he" target="_blank">Liên hệ</a>
+<a target="_blank" href="Content/Document/Thoa_thuan_su_dung_phan_mem_MeInvoice.vn.pdf" target="_blank">&ensp;&ensp;Thỏa thuận sử dụng&ensp;&ensp;|</a>
+<a target="_blank" href="https://www.misa.vn/privacy/">&ensp;&ensp;Chính sách bảo mật</a>
+<a class="ic-login ic-youtube" target="_blank" href="https://www.youtube.com/user/MISAJSCchannel"></a>
+<a class="ic-login ic-facebook" target="_blank" href="https://www.facebook.com/MISAJSC/"></a>
+<a href="https://sign-up.meinvoice.vn/" target="_blank" class="cart-bottom cuk-cart-bottom" title="Dùng thử">
+<a href="tel:19008177" class="hotline-bottom pcDevice" title="Hotline">
+<a href="https://store.misa.vn/quote?pid=220" target="_blank" class="buy-now-bottom cuk-cart-bottom" title="Mua ngay">
+</form>
+<script type="text/javascript">
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a3104f6f286f84a3',t:'MTc4NzcyMDgxOQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head
+<a href="javascript:void(0)" id="adownload" class="hide" target="_blank"></a>
+<a href="http://tracuunnt.gdt.gov.vn/tcnnt/mstdn.jsp" style="text-decoration: none; color: black; outline: none" target="_blank">
+<a href="http://tracuuhoadon.gdt.gov.vn/tc1hd.html" style="text-decoration: none; color: black; outline: none" target="_blank" class="search-gov">
+<form style="height: 100%">
+</form>
+<form>
+<input type="button" class="btn select-value btn-close" id="" value="Đóng">
+</form>
+<form>
+<a href="#" target="_blank" class="icon help-btn"></a>
+<a href="https://payment.esign.vn/bao-gia" target="_blank" class="buynow-btn">Mua ngay</a>
+</form>
+<form>
+<input type="button" class="btn select-value btn-close" id="" value="Đóng">
+<input type="button" class="btn select-value test-deal success-element" id="" value="Xem lại hóa đơn" data-command="view-invoice">
+<input type="button" class="btn select-value test-deal payment-element" id="" value="Kiểm tra giao dịch" data-command="payment-status">
+<input type="button" class="btn select-value test-deal success-element" id="" value="Về trang chủ" data-command="reload">
+</form>
+<input type="text" id="txtConverter" class="text-converter" placeholder="Nhập họ và tên người chuyển đổi" tabindex="1" />
+<input type="button" id="btnContine" class="button-convert contine" value="Tiếp tục" tabindex="2" />
+<input type="button" id="btnCancel" class="button-convert cancel" value="Hủy bỏ" tabindex="3" />
+<input type="button" class="btn" value="Xem lại hóa đơn" id="btnViewEinvoice" />
+<input type="button" class="btn" value="Quay lại trang chủ" id="btnBackToSearch" />
+<script src="https://meinvoice.misacdn.net/MISA.CDN.WebResource.axd?type=js&CDNApplication=TraCuu&resource=H4sIAAAAAAAAA0tjsGLQZyhhKGJIZEhmKAVCfYZgIKuIIZOhACheDOT7ANlJYFYWQyFQRSpQtpJBl8GYQQ%2bMDYE4F6gmD0hnAdUBAHUBrN9UAAAA&v=R98.03"></script>
+<script src="https://meinvoice.misacdn.net/MISA.CDN.WebResource.axd?type=js&CDNApplication=TraCuu&resource=H4sIAAAAAAAAA0tjsGLQZyhhKGJIZEhmKAVCfYZgIKuIIZOhACheDOT7ANlJYFYWQyFQRSpQtpJBF8jKZNADihUzAADkY%2fBJRgAAAA%3d%3d&v=R98.03"></script>
+<script src="https://meinvoice.misacdn.net/MISA.CDN.WebResource.axd?type=js&CDNApplication=TraCuu&resource=H4sIAAAAAAAAAx2Lyw2AMAzFPBG9MwM3WIBSkKg4QD8HtsdC0YscJzkYCTQKKxvdCsxS4eTWV%2bdJjj9lHi92ty8DyZ9mFhO59FWb7R%2fLkKEVVgAAAA%3d%3d&v=R98.03"></script>
+<script src="https://meinvoice.misacdn.net/MISA.CDN.WebResource.axd?type=js&CDNApplication=TraCuu&resource=H4sIAAAAAAAAA2WLSQ5AABAE60OWiJM3OPECBCGI9eD3Km4ik870dPV0ZESc7FQ0XE5EqdsZWM0P71xfv25ks9FKb0J7Az2LnxPFjx4fGpCYpSpWs2xxj7YeDJ3J%2b4IAAAA%3d&v=R98.03"></script>
+<script src="https://meinvoice.misacdn.net/MISA.CDN.WebResource.axd?type=js&CDNApplication=TraCuu&resource=H4sIAAAAAAAAA0tjsGLQZyhhKGJIZEhmKAVCfYZgIKuIIZOhACheDOQnMeQDIYgNUVfAoMeQBeQBAF%2fALSY8AAAA&v=R98.03"></script>
+<script src="https://meinvoice.misacdn.net/MISA.CDN.WebResource.axd?type=js&CDNApplication=TraCuu&resource=H4sIAAAAAAAAA0tjsGLQZyhhKGJIZEhmKAVCfYZgIKuIIZOhACheDOR7MuQxpDCkMlQw6DFkAUUADOfAnDQAAAA%3d&v=R98.03"></script>
+<script src="https://meinvoice.misacdn.net/MISA.CDN.WebResource.axd?type=js&CDNApplication=TraCuu&resource=H4sIAAAAAAAAA0tjsGLQZyhhKGJIZEhmKAVCfYZgIKuIIZOhACheDOQ7M%2bQz5AJhPkMeGk%2bPIQuoAgAf0cd1RAAAAA%3d%3d&v=R98.03"></script>
+<script src="https://meinvoice.misacdn.net/MISA.CDN.WebResource.axd?type=js&CDNApplication=TraCuu&resource=H4sIAAAAAAAAA0tjsGLQZyhhKGJIZEhmKAVCfYZgIKuIIZOhACheDOS7MKQypAHlSxlygCJ6DFlAUQAKor6tOAAAAA%3d%3d&v=R98.03"></script>
+<script src="https://meinvoice.misacdn.net/MISA.CDN.WebResource.axd?type=js&CDNApplication=TraCuu&resource=H4sIAAAAAAAAA0tjsGLQZyhhKGJIZEhmKAVCfYZgIKuIIZOhACheDOTnAtnFQPl4hmyGSiArn0GPIQtIAwBUzAk5PAAAAA%3d%3d&v=R98.03"></script>

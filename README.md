@@ -50,11 +50,58 @@ hdtool run     --from 2026-06-01 --to 2026-06-30 -o bang-ke-062026.xlsx
 - **Tổng hợp theo thuế suất**: gom 10/8/5/0/KCT/KKKNT → số kê khai GTGT.
 - **Bỏ qua**: hóa đơn ngoài kỳ, sai bên mua, XML lỗi (cần xem lại/nhập tay).
 
+## Chạy cho một công ty
+
+Khai hộp thư nào thuộc công ty nào trong `config/settings.yaml`:
+
+```yaml
+mailboxes:
+  info@miyano.com.vn:         miyano
+  mvl.invoices2024@gmail.com: miyano
+  anh.doan@medcons.vn:        medcons
+```
+
+Chọn công ty ở menu (hoặc `--company`) thì tool **chỉ kết nối hộp thư của công ty
+đó**. Hộp thư chưa khai vẫn được quét cho mọi công ty — thà quét thừa còn hơn sót.
+
+Thư mục lưu và bảng kê **vẫn chia theo MST bên mua** đọc từ XML, không theo hộp
+thư — đó mới là căn cứ đúng luật. Hóa đơn tải từ hộp thư công ty này nhưng bên
+mua là công ty khác sẽ được **cảnh báo** để bạn rà lại.
+
+## Hóa đơn gửi trong ZIP có mật khẩu
+
+Một số nhà cung cấp (SMBC eInvoice) gửi **mỗi hóa đơn bằng hai email cùng tiêu
+đề**: một email mang `invoice.zip` đã mã hóa, một email mang dòng
+`Password unzip file: …`. Tool tự ghép cặp theo tiêu đề (bỏ tiền tố `Fwd:`/`Re:`)
+rồi giải nén — không cần bạn làm gì.
+
+Không tìm thấy email chứa mật khẩu thì dòng sổ ghi **"thiếu mật khẩu zip"**; dán
+mật khẩu vào cột `Mã tra cứu` rồi chạy lại.
+
+## Hóa đơn chỉ có link tra cứu
+
+Nhiều nhà cung cấp không đính kèm file mà chỉ gửi **link tra cứu + mã**. Tool tự
+xử lý theo thứ tự: công thức đã học (`config/ncc-registry.yaml`) → adapter code
+(`src/hdtool/adapters/`) → **dò tự động** (lấy trang tra cứu, phân loại, điền
+form nếu cần, thử link tải, **chỉ nhận khi parse ra hóa đơn hợp lệ**), rồi ghi
+công thức lại để lần sau đi tắt.
+
+Mọi hóa đơn chỉ-link được ghi vào sổ tích lũy **`data/so-hoa-don-cho-tai.csv`**
+(mở bằng Excel, sửa tay được). Dòng chưa tải được luôn kèm **lý do cụ thể**
+("có captcha — cần trình duyệt", "trang SPA", "không có link", "thiếu mã").
+
+```bash
+hdtool ncc          # xem cách tải theo NCC + các dòng đang chờ kèm lý do
+hdtool ncc --tai    # thử tải lại (dùng đúng mã bạn gõ tay vào sổ)
+```
+
+Bóc mã không ra thì gõ vào cột **Mã tra cứu** của sổ rồi chạy lại — tool giữ
+nguyên ô bạn đã điền.
+
 ## Giới hạn hiện tại (theo thiết kế)
 
-- **Hóa đơn chỉ có link tra cứu** (không đính kèm file): tool liệt kê vào danh
-  sách "cần tải tay" cho tới khi có **adapter portal** cho đúng nhà phát hành đó
-  (`src/hdtool/adapters/`). Adapter chỉ viết được khi khảo sát email thật.
+- **Cổng có captcha hoặc SPA** (meinvoice, ehoadon, easyinvoice): dò tự động
+  dừng lại với chẩn đoán rõ ràng — cần trình duyệt, chưa làm.
 - **Hóa đơn hủy**: trạng thái hủy ghi ở cơ quan thuế, không nằm chắc trong XML
   gốc → tool chỉ đánh dấu "nghi hủy" khi có hóa đơn thay thế trỏ tới.
 - **PDF không kèm XML**: không lấy số tự động (đánh dấu cần nhập tay/OCR).

@@ -149,3 +149,155 @@ def test_main_no_args_launches_interactive(monkeypatch):
     monkeypatch.setattr(cli, "_load_settings", lambda: _settings("2026-06-01", "2026-06-30"))
     rc = cli.main([])
     assert rc == 0 and calls.get("ran") is True
+
+
+# ------------------------------------------------------- lệnh `hdtool ncc` (T43)
+
+def test_parser_ncc_va_co_tai():
+    p = build_parser()
+    assert p.parse_args(["ncc"]).tai is False
+    assert p.parse_args(["ncc", "--tai"]).tai is True
+
+
+def _settings_data(tmp_path):
+    s = _settings()
+    s.data_dir = tmp_path
+    return s
+
+
+def test_cmd_ncc_liet_ke_cong_thuc_va_dong_dang_cho(tmp_path, capsys, monkeypatch):
+    from hdtool import ncc, worklist
+    from hdtool.worklist import WorkRow
+
+    reg = tmp_path / "ncc.yaml"
+    ncc.save_registry(reg, [ncc.learn(
+        "https://meinvoice.vn/tra-cuu/DownloadHandler.ashx?Type=xml&Code=GJF211_PDLEP",
+        "GJF211_PDLEP", ten="meinvoice.vn")])
+    monkeypatch.setattr(cli, "NCC_REGISTRY", reg)
+    worklist.save(tmp_path / "so-hoa-don-cho-tai.csv", [
+        WorkRow(message_id="m1", ncc="ehoadon.vn", trang_thai="cần trình duyệt",
+                chan_doan="có captcha — cần trình duyệt"),
+        WorkRow(message_id="m2", ncc="ipos.vn", trang_thai="đã tải"),
+    ])
+    cli.cmd_ncc(_settings_data(tmp_path), SimpleNamespace(tai=False))
+    out = capsys.readouterr().out
+    assert "meinvoice.vn" in out                      # NCC đã có công thức
+    assert "ehoadon.vn" in out and "captcha" in out   # dòng đang chờ + lý do
+    assert "m2" not in out                            # dòng đã tải không nằm ở mục chờ
+
+
+def test_cmd_ncc_tai_dung_ma_nguoi_dung_dien_tay(tmp_path, monkeypatch):
+    """Người dùng gõ mã vào sổ -> `hdtool ncc --tai` phải dùng ĐÚNG mã đó."""
+    from hdtool import worklist
+    from hdtool.portal_probe import ProbeResult
+    from hdtool.worklist import WorkRow
+
+    monkeypatch.setattr(cli, "NCC_REGISTRY", tmp_path / "ncc.yaml")
+    worklist.save(tmp_path / "so-hoa-don-cho-tai.csv", [
+        WorkRow(message_id="m1", link_tra_cuu="https://x.vn/p",
+                ma_tra_cuu="ABC123", trang_thai="thiếu mã")])
+    goi = {}
+
+    def gia(links, ma=None, **kw):
+        goi["links"], goi["ma"] = links, ma
+        return ProbeResult()
+
+    monkeypatch.setattr(cli.portal_probe, "fetch_link_only", gia)
+    cli.cmd_ncc(_settings_data(tmp_path), SimpleNamespace(tai=True))
+    assert goi["ma"] == "ABC123"
+    assert goi["links"] == ["https://x.vn/p"]
+
+
+def test_main_lenh_ncc_khong_doi_khoang_ngay(monkeypatch):
+    """`hdtool ncc` làm việc trên sổ đã có, không cần --from/--to.
+
+    Phải vá vào _COMMANDS (dict giữ tham chiếu hàm trực tiếp) chứ vá thuộc tính
+    module thì main() vẫn gọi hàm thật.
+    """
+    goi = {}
+    monkeypatch.setattr(cli, "_load_settings", _settings)
+
+    def gia(settings, args):
+        goi["chay"] = True
+        return 0
+
+    monkeypatch.setitem(cli._COMMANDS, "ncc", gia)
+    assert cli.main(["ncc"]) == 0
+    assert goi["chay"] is True
+
+
+# ------------------------------------- T47: collect chỉ quét hộp thư của công ty
+
+def test_parser_collect_va_run_co_company():
+    p = build_parser()
+    assert p.parse_args(["collect", "--company", "miyano"]).company == "miyano"
+    assert p.parse_args(["run", "--company", "medcons"]).company == "medcons"
+    assert p.parse_args(["collect"]).company is None
+
+
+def test_cmd_collect_chi_ket_noi_hop_thu_cua_cong_ty_da_chon(monkeypatch, tmp_path):
+    """Chọn miyano -> KHÔNG được đụng tới hộp thư của medcons."""
+    from hdtool.config import build_settings
+
+    env = {"IMAP_USER": "info@miyano.com.vn", "IMAP_USER_2": "anh.doan@medcons.vn",
+           "IMAP_USER_3": "mvl.invoices2024@gmail.com"}
+    cfg = {"mailboxes": {"info@miyano.com.vn": "miyano",
+                         "mvl.invoices2024@gmail.com": "miyano",
+                         "anh.doan@medcons.vn": "medcons"},
+           "companies": {"0109529507": "miyano", "0108186705": "medcons"}}
+    settings = build_settings(env, cfg, data_dir=tmp_path)
+
+    da_ket_noi = []
+
+    class ScannerGia:
+        def __init__(self, s, account):
+            self.account = account
+            self.folder = "INBOX"
+
+        def connect(self):
+            da_ket_noi.append(self.account.user)
+
+        def scan(self, *a):
+            return []
+
+        def close(self):
+            pass
+
+    import hdtool.mailscan as mailscan
+    monkeypatch.setattr(mailscan, "MailScanner", ScannerGia)
+    cli.cmd_collect(settings, SimpleNamespace(
+        from_date=date(2026, 6, 1), to_date=date(2026, 6, 30),
+        include_suspect=False, company="miyano"))
+    assert sorted(da_ket_noi) == ["info@miyano.com.vn", "mvl.invoices2024@gmail.com"]
+    assert "anh.doan@medcons.vn" not in da_ket_noi
+
+
+def test_cmd_run_truyen_company_va_format_xuong_report(monkeypatch):
+    """`run --company medcons` phải tổng hợp cho medcons, không phải cho tất cả."""
+    nhan = {}
+    monkeypatch.setattr(cli, "cmd_collect", lambda s, a: 0)
+    monkeypatch.setattr(cli, "cmd_report",
+                        lambda s, a: nhan.update(company=a.company, fmt=a.format) or 0)
+    cli.cmd_run(_settings(), SimpleNamespace(
+        from_date=date(2026, 6, 1), to_date=date(2026, 6, 30),
+        include_suspect=False, output=None, company="medcons"))
+    assert nhan == {"company": "medcons", "fmt": "xlsx"}
+
+
+def test_main_dang_nhap_hop_thu_that_bai_bao_gon_khong_traceback(monkeypatch, capsys):
+    """App password bị thu hồi -> báo tên hộp thư + chỗ sửa, trả mã 1, không sập."""
+    import hdtool.mailscan as mailscan
+
+    class ScannerHong:
+        def __init__(self, s, account):
+            self.account = account
+
+        def connect(self):
+            raise mailscan.MailLoginError(self.account.user, "Invalid credentials")
+
+    monkeypatch.setattr(cli, "_load_settings", lambda: _settings("2026-06-01", "2026-06-30"))
+    monkeypatch.setattr(mailscan, "MailScanner", ScannerHong)
+    assert cli.main(["scan"]) == 1
+    err = capsys.readouterr().err
+    assert "a@x.vn" in err
+    assert ".env" in err

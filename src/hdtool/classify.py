@@ -30,6 +30,11 @@ class ClassifierConfig:
     # A match forces "ignore" UNLESS the mail carries an XML (then keep it, to
     # never lose a real invoice).
     exclude_senders: list[str] = field(default_factory=list)
+    # Subjects that are never a VAT invoice (login alerts, prepaid-account
+    # notices…). Needed when the SENDER is a real issuer: blocking
+    # hoadondientu@vnpt-invoice.vn wholesale would drop genuine VNPT invoices.
+    # Same override applies: an XML in the mail always wins.
+    exclude_subjects: list[str] = field(default_factory=list)
     certain_threshold: int = 5
     suspect_threshold: int = 2
 
@@ -54,11 +59,14 @@ def score_email(
     # Excluded sender + no XML -> not a VAT invoice (bank receipt, statement…).
     # XML present overrides: never drop a mail that actually carries invoice data.
     excluded = any(x.lower() in sender_l for x in cfg.exclude_senders if x)
-    if excluded and not has_xml:
+    subject_excluded = any(x.lower() in subject_l for x in cfg.exclude_subjects if x)
+    if (excluded or subject_excluded) and not has_xml:
+        ly_do = ("Tiêu đề trong danh sách loại trừ (không phải HĐ GTGT)"
+                 if subject_excluded and not excluded
+                 else "Người gửi trong danh sách loại trừ (không phải HĐ GTGT)")
         return EmailCandidate(
             message_id=message_id, uid=uid, sender=sender, subject=subject,
-            internal_date=internal_date, score=0,
-            reasons=["Người gửi trong danh sách loại trừ (không phải HĐ GTGT)"],
+            internal_date=internal_date, score=0, reasons=[ly_do],
             has_xml=has_xml, has_pdf=has_pdf, has_link=has_link,
             bucket="ignore", account=account,
         )
