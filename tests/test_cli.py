@@ -282,3 +282,22 @@ def test_cmd_run_truyen_company_va_format_xuong_report(monkeypatch):
         from_date=date(2026, 6, 1), to_date=date(2026, 6, 30),
         include_suspect=False, output=None, company="medcons"))
     assert nhan == {"company": "medcons", "fmt": "xlsx"}
+
+
+def test_main_dang_nhap_hop_thu_that_bai_bao_gon_khong_traceback(monkeypatch, capsys):
+    """App password bị thu hồi -> báo tên hộp thư + chỗ sửa, trả mã 1, không sập."""
+    import hdtool.mailscan as mailscan
+
+    class ScannerHong:
+        def __init__(self, s, account):
+            self.account = account
+
+        def connect(self):
+            raise mailscan.MailLoginError(self.account.user, "Invalid credentials")
+
+    monkeypatch.setattr(cli, "_load_settings", lambda: _settings("2026-06-01", "2026-06-30"))
+    monkeypatch.setattr(mailscan, "MailScanner", ScannerHong)
+    assert cli.main(["scan"]) == 1
+    err = capsys.readouterr().err
+    assert "a@x.vn" in err
+    assert ".env" in err

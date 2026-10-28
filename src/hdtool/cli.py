@@ -548,6 +548,23 @@ _COMMANDS = {"scan": cmd_scan, "collect": cmd_collect, "report": cmd_report,
 
 
 def main(argv: Optional[list] = None) -> int:
+    from .mailscan import MailLoginError
+    try:
+        return _main(argv)
+    except MailLoginError as exc:
+        # Dừng hẳn, KHÔNG bỏ qua hộp thư lỗi để chạy tiếp: thiếu một hộp thư là
+        # bảng kê thiếu hóa đơn mà không ai biết.
+        print(f"\n✗ {exc}\n"
+              f"  Máy chủ không nhận app password của {exc.user} trong .env: gõ thiếu/sai\n"
+              f"  ký tự (app password Google có đúng 16 chữ cái), tạo nhầm ở tài khoản\n"
+              f"  khác, hoặc đã bị thu hồi (đổi mật khẩu / tắt xác minh 2 bước).\n"
+              f"  Tạo app password mới tại https://myaccount.google.com/apppasswords,\n"
+              f"  sửa dòng IMAP_APP_PASSWORD tương ứng trong .env rồi chạy lại.\n"
+              f"  Đã dừng — chưa xuất bảng kê.", file=sys.stderr)
+        return 1
+
+
+def _main(argv: Optional[list] = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     settings = _load_settings()
     if not argv:

@@ -38,7 +38,7 @@ def search_window(from_date: date, to_date: date, pad_before: int, pad_after: in
     return since, before
 
 
-def pick_all_mail(list_lines: Iterable[bytes]) -> Optional[str]:
+def pick_all_mail(list_lines: Iterable[object]) -> Optional[str]:
     """Find the \\All special-use mailbox name from a LIST response."""
     for line in list_lines:
         s = line.decode("utf-8", "replace") if isinstance(line, (bytes, bytearray)) else str(line)
@@ -80,6 +80,16 @@ def _decode(s: Optional[str]) -> str:
     return "".join(out)
 
 
+class MailLoginError(Exception):
+    """IMAP server rejected the login — carries WHICH mailbox, never the password."""
+
+    def __init__(self, user: str, detail: str = ""):
+        self.user = user
+        self.detail = detail
+        super().__init__(f"Đăng nhập hộp thư {user} thất bại"
+                         + (f": {detail}" if detail else ""))
+
+
 class MailScanner:
     """Thin read-only IMAP client for scanning and fetching invoice emails."""
 
@@ -97,7 +107,13 @@ class MailScanner:
         self.imap = imaplib.IMAP4_SSL(
             self.account.host, self.account.port, ssl_context=ssl.create_default_context()
         )
-        self.imap.login(self.account.user, self.account.password)
+        try:
+            self.imap.login(self.account.user, self.account.password)
+        except imaplib.IMAP4.error as exc:
+            detail = exc.args[0] if exc.args else ""
+            if isinstance(detail, (bytes, bytearray)):
+                detail = detail.decode("utf-8", "replace")
+            raise MailLoginError(self.account.user, str(detail)) from exc
         typ, data = self.imap.list()
         all_mail = pick_all_mail(data) if typ == "OK" else None
         self.folder = all_mail or "INBOX"
@@ -114,7 +130,7 @@ class MailScanner:
             from_date, to_date, self.s.pad_before_days, self.s.pad_after_days
         )
         typ, data = self.imap.uid(
-            "SEARCH", None, "SINCE", imap_date(since), "BEFORE", imap_date(before)
+            "SEARCH", "SINCE", imap_date(since), "BEFORE", imap_date(before)
         )
         uids = data[0].split() if (typ == "OK" and data and data[0]) else []
 
